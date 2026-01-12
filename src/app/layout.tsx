@@ -11,6 +11,7 @@ import { PublicEnvScript } from "next-runtime-env";
 import { ThemeProvider } from "@/components/theme-provider";
 
 import { Toaster } from "@/components/ui/sonner";
+import StoreProvider from "@/providers/store-provider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -79,19 +80,21 @@ export default function RootLayout({
       <body
         className={`${geistSans.className} antialiased max-w-[100vw] overflow-x-hidden`}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <QueryProvider>
-            <NavBar />
-            {children}
-            <Footer />
-          </QueryProvider>
-        </ThemeProvider>
-        <Toaster />
+        <StoreProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <QueryProvider>
+              <NavBar />
+              {children}
+              <Footer />
+            </QueryProvider>
+          </ThemeProvider>
+          <Toaster />
+        </StoreProvider>
       </body>
     </html>
   );

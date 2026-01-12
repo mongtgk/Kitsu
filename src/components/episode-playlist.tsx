@@ -4,7 +4,7 @@ import EpisodeCard from "./common/episode-card";
 import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { useAnimeStore } from "@/store/anime-store";
+import { useAnimeSelector } from "@/store/anime-store";
 import { Episode, IEpisodes } from "@/types/episodes";
 import Select, { ISelectOptions } from "./common/select";
 import { Input } from "./ui/input";
@@ -33,7 +33,9 @@ const EpisodePlaylist = ({
 
   const isLatestEpisode = searchParams.get("type");
 
-  const { setSelectedEpisode } = useAnimeStore();
+  const setSelectedEpisode = useAnimeSelector(
+    (state) => state.setSelectedEpisode,
+  );
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const episodeRefs = useRef<(HTMLDivElement | null)[]>([]);

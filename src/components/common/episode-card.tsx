@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 import { ROUTES } from "@/constants/routes";
 import { Episode } from "@/types/episodes";
-import { useAnimeStore } from "@/store/anime-store";
+import { useAnimeSelector } from "@/store/anime-store";
 import { useHasAnimeWatched } from "@/hooks/use-is-anime-watched";
 import { Captions, Mic } from "lucide-react";
 import Link from "next/link";
@@ -27,7 +27,7 @@ const EpisodeCard = ({
   variant = "card",
   ...props
 }: Props) => {
-  const { selectedEpisode } = useAnimeStore();
+  const selectedEpisode = useAnimeSelector((state) => state.selectedEpisode);
   const { hasWatchedEpisode } = useHasAnimeWatched(
     props.animeId,
     props.episode.episodeId,

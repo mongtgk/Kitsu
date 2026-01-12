@@ -158,7 +158,7 @@ async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
     _log_error(request, exc.status_code, exc.code, exc.message, exc)
     return JSONResponse(
         status_code=exc.status_code,
-        content=error_payload(exc.code, exc.message),
+        content=error_payload(exc.code, exc.message, exc.details),
     )
 
 

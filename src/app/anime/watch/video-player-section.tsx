@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useAnimeStore } from "@/store/anime-store";
+import { useAnimeSelector } from "@/store/anime-store";
 
 import { IWatchedAnime } from "@/types/watched-anime";
 // import KitsunePlayer from "@/components/kitsune-player";
@@ -19,7 +19,8 @@ import { getLocalStorageJSON, setLocalStorageJSON, removeLocalStorageItem } from
 const VideoPlayerSection = () => {
   const searchParams = useSearchParams();
   const episodeId = searchParams.get("episode");
-  const { selectedEpisode, anime } = useAnimeStore();
+  const selectedEpisode = useAnimeSelector((state) => state.selectedEpisode);
+  const anime = useAnimeSelector((state) => state.anime);
 
   const { data: serversData } = useGetEpisodeServers(selectedEpisode);
 
