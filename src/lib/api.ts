@@ -183,7 +183,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       const authStore = getAuthStore();
-      const { clearAuth, setAuth, setIsRefreshing } = authStore.getState();
+      const { clearAuth, setIsRefreshing } = authStore.getState();
       const refreshToken = authStore.getState().auth?.refreshToken;
 
       if (!refreshToken) {
@@ -196,18 +196,16 @@ api.interceptors.response.use(
           // eslint-disable-next-line no-console
           console.warn("Refresh state desynchronized; resetting refresh flag");
           setIsRefreshing(false);
-          return Promise.reject(
-            normalizeApiError(new Error("Refresh state desynchronized")),
-          );
+        } else {
+          return refreshPromise
+            .then((token) => {
+              if (token && originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              }
+              return api(originalRequest);
+            })
+            .catch((err) => Promise.reject(normalizeApiError(err)));
         }
-        return refreshPromise
-          .then((token) => {
-            if (token && originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
-            return api(originalRequest);
-          })
-          .catch((err) => Promise.reject(normalizeApiError(err)));
       }
 
       setIsRefreshing(true);
@@ -218,14 +216,15 @@ api.interceptors.response.use(
             refresh_token: refreshToken,
           });
           const tokens = extractTokens(data as TokenPayload);
-          const updatedAuth = authStore.getState().auth;
-          if (updatedAuth) {
-            setAuth({
-              ...updatedAuth,
-              accessToken: tokens.accessToken || updatedAuth.accessToken,
-              refreshToken: tokens.refreshToken || updatedAuth.refreshToken,
-            });
-          }
+          authStore.setState((state) => {
+            if (!state.auth) return state;
+            const nextAuth = {
+              ...state.auth,
+              accessToken: tokens.accessToken || state.auth.accessToken,
+              refreshToken: tokens.refreshToken || state.auth.refreshToken,
+            };
+            return { ...state, auth: nextAuth };
+          });
           // Prefer freshly issued token; fall back to stored token only when backend omits tokens
           // Some refresh endpoints may skip returning tokens if a session was just rotated.
           // In that case we reuse the last known access token to avoid dropping the user abruptly.
