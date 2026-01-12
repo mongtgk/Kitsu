@@ -29,10 +29,10 @@ type TokenPayload = {
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value?: unknown) => void;
-  reject: (error: unknown) => void;
+  reject: (error: ApiError | Error | null) => void;
 }> = [];
 
-const processQueue = (error: unknown, token: string | null = null) => {
+const processQueue = (error: ApiError | Error | null, token: string | null = null) => {
   failedQueue.forEach((promise) => {
     if (error) {
       promise.reject(error);

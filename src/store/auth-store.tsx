@@ -48,9 +48,19 @@ const resolveStorage = () => {
     return globalThis.localStorage;
   }
   return {
-    getItem: () => null,
-    setItem: () => undefined,
-    removeItem: () => undefined,
+    getItem: (key: string) => {
+      void key;
+      return null;
+    },
+    setItem: (key: string, value: string) => {
+      void key;
+      void value;
+      return undefined;
+    },
+    removeItem: (key: string) => {
+      void key;
+      return undefined;
+    },
   };
 };
 

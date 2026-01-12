@@ -78,12 +78,7 @@ const useAnimeStoreApi = () => {
   return store;
 };
 
-export function useAnimeStore(): IAnimeStore;
-export function useAnimeStore<T>(selector: (state: IAnimeStore) => T): T;
-export function useAnimeStore<T>(selector?: (state: IAnimeStore) => T) {
+export const useAnimeStore = () => {
   const store = useAnimeStoreApi();
-  const boundSelector =
-    selector ??
-    ((state) => state as unknown as T);
-  return useStore(store, boundSelector);
-}
+  return useStore(store);
+};
