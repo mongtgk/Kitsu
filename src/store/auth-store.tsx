@@ -114,20 +114,13 @@ const createAuthStore = (initState: AuthInitState = defaultState) => {
     );
   };
 
-  let hasFinalizedStatus = false;
-  const finalizeAuthStatusOnce = () => {
-    if (hasFinalizedStatus) return;
-    hasFinalizedStatus = true;
-    finalizeAuthStatus();
-  };
-
   const persistApi = authStore.persist;
   if (persistApi?.hasHydrated?.()) {
-    finalizeAuthStatusOnce();
+    finalizeAuthStatus();
   } else if (persistApi?.onFinishHydration) {
-    persistApi.onFinishHydration(finalizeAuthStatusOnce);
+    persistApi.onFinishHydration(finalizeAuthStatus);
   } else {
-    finalizeAuthStatusOnce();
+    finalizeAuthStatus();
   }
 
   return authStore;
@@ -211,7 +204,6 @@ export const useAuthHydrated = () => {
       (status) => {
         if (status !== "unknown") {
           setHydrated(true);
-          unsubStatus();
         }
       },
     );
