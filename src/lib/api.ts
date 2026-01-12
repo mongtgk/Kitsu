@@ -131,7 +131,7 @@ const normalizeApiError = (error: unknown): ApiError => {
   }
   return {
     code: "unknown_error",
-    message: error instanceof Error ? error.message : "Unexpected error occurred.",
+    message: "Unexpected error occurred.",
   };
 };
 
