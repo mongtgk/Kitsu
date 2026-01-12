@@ -113,13 +113,12 @@ const createAuthStore = (initState: AuthState = defaultState) => {
     );
   };
 
-  if (authStore.persist?.hasHydrated?.()) {
+  const persistApi = authStore.persist;
+  if (persistApi?.hasHydrated?.()) {
     finalizeAuthStatus();
+  } else if (persistApi?.onFinishHydration) {
+    persistApi.onFinishHydration(finalizeAuthStatus);
   } else {
-    authStore.persist?.onFinishHydration?.(finalizeAuthStatus);
-  }
-
-  if (!authStore.persist?.onFinishHydration) {
     finalizeAuthStatus();
   }
 
@@ -189,18 +188,17 @@ export const useAuthHydrated = () => {
   const store = useAuthStoreApi();
   const authStatus = useStore(store, (state) => state.authStatus);
   const [hydrated, setHydrated] = useState(
-    store.persist?.hasHydrated?.() ?? authStatus !== "unknown",
+    () => store.persist?.hasHydrated?.() ?? false,
   );
 
   useEffect(() => {
-    if (authStatus !== "unknown") {
+    if (authStatus !== "unknown" || store.persist?.hasHydrated?.()) {
       setHydrated(true);
       return;
     }
-    if (hydrated) return;
     const unsub = store.persist?.onFinishHydration?.(() => setHydrated(true));
     return () => unsub?.();
-  }, [store, hydrated, authStatus]);
+  }, [store, authStatus]);
 
   return hydrated;
 };
