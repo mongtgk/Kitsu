@@ -192,11 +192,15 @@ api.interceptors.response.use(
         return Promise.reject(normalizeApiError(error));
       }
 
-      if (authStoreState.isRefreshing && !refreshPromise) {
+      let isRefreshing = authStore.getState().isRefreshing;
+      if (isRefreshing && !refreshPromise) {
+        // eslint-disable-next-line no-console
+        console.warn("Refresh state desynchronized; resetting refresh flag");
         setIsRefreshing(false);
+        isRefreshing = false;
       }
 
-      const ongoingRefresh = authStoreState.isRefreshing ? refreshPromise : null;
+      const ongoingRefresh = isRefreshing ? refreshPromise : null;
 
       if (ongoingRefresh) {
         return ongoingRefresh
