@@ -1,7 +1,8 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { env } from "next-runtime-env";
-import { ROUTES } from "@/constants/routes";
+import { handleAuthError, normalizeApiError, setAuthFailureHandler } from "./auth-errors";
 import { getAuthStore } from "@/store/auth-store";
+export type { ApiError } from "./auth-errors";
 
 const baseURL =
   env("NEXT_PUBLIC_API_BASE_URL") ||
@@ -50,120 +51,6 @@ const resolveAccessToken = (tokens: ReturnType<typeof extractTokens>) => {
   return tokens.accessToken || fallbackToken;
 };
 
-export type ApiError = {
-  code: string;
-  message: string;
-  status?: number;
-  details?: unknown;
-};
-
-const normalizeApiError = (error: unknown): ApiError => {
-  if (error instanceof AxiosError) {
-    const status = error.response?.status;
-    const payload = error.response?.data as {
-      code?: string;
-      message?: string;
-      details?: unknown;
-    } | undefined;
-    const baseMessage =
-      typeof payload?.message === "string"
-        ? payload.message
-        : error.message || "Request failed. Please try again.";
-    if (status === 401) {
-      return {
-        code: payload?.code || "unauthorized",
-        message:
-          payload?.message || "Session expired. Please sign in again.",
-        details: payload?.details,
-        status,
-      };
-    }
-    if (status === 403) {
-      return {
-        code: payload?.code || "forbidden",
-        message: payload?.message || "Access denied.",
-        details: payload?.details,
-        status,
-      };
-    }
-    if (status && status >= 500) {
-      return {
-        code: payload?.code || "server_error",
-        message:
-          payload?.message ||
-          "Something went wrong on our side. Please try again.",
-        details: payload?.details,
-        status,
-      };
-    }
-    if (error.code === "ECONNABORTED") {
-      return {
-        code: "timeout",
-        message: "Request timed out. Please retry.",
-        status,
-        details: payload?.details,
-      };
-    }
-    return {
-      code: payload?.code || "request_failed",
-      message: baseMessage,
-      status,
-      details: payload?.details,
-    };
-  }
-  return {
-    code: "unknown_error",
-    message: "Unexpected error occurred.",
-  };
-};
-
-// Tracks error objects that already triggered auth handling to avoid duplicate redirects
-const handledAuthFailures = new WeakSet<object>();
-
-const authFailureHandlers = new Set<(redirectTo: string) => void>();
-
-export const setAuthFailureHandler = (handler: (redirectTo: string) => void) => {
-  authFailureHandlers.add(handler);
-  return () => {
-    authFailureHandlers.delete(handler);
-  };
-};
-
-const isAuthFailureHandled = (error: unknown) =>
-  error && typeof error === "object" && handledAuthFailures.has(error as object);
-
-const trackAuthFailureError = (error: unknown) => {
-  if (error && typeof error === "object") {
-    handledAuthFailures.add(error as object);
-  }
-};
-
-const navigateHome = () => {
-  if (typeof window === "undefined" || window.location.pathname === ROUTES.HOME) {
-    return;
-  }
-  window.location.replace(ROUTES.HOME);
-};
-
-let isHandlingAuthFailure = false;
-
-const handleAuthFailure = () => {
-  if (isHandlingAuthFailure) {
-    return;
-  }
-  isHandlingAuthFailure = true;
-  try {
-    getAuthStore().getState().clearAuth();
-    if (authFailureHandlers.size > 0) {
-      authFailureHandlers.forEach((handler) => handler(ROUTES.HOME));
-      return;
-    }
-    navigateHome();
-  } finally {
-    isHandlingAuthFailure = false;
-  }
-};
-
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = getAuthStore().getState().auth?.accessToken;
   if (token) {
@@ -183,12 +70,15 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       const authStore = getAuthStore();
-      const { clearAuth, setAuth, setIsRefreshing } = authStore.getState();
+      const { setAuth, setIsRefreshing } = authStore.getState();
       const refreshToken = authStore.getState().auth?.refreshToken;
 
       if (!refreshToken) {
-        clearAuth();
-        return Promise.reject(normalizeApiError(error));
+        try {
+          handleAuthError(error);
+        } catch (authError) {
+          return Promise.reject(authError);
+        }
       }
 
       if (authStore.getState().isRefreshing) {
@@ -199,7 +89,9 @@ api.interceptors.response.use(
             }
             return api(originalRequest);
           })
-          .catch((err) => Promise.reject(normalizeApiError(err)));
+          .catch((err) => {
+            handleAuthError(err);
+          });
       }
 
       setIsRefreshing(true);
@@ -223,17 +115,15 @@ api.interceptors.response.use(
           // In that case we reuse the last known access token to avoid dropping the user abruptly.
           const newToken = resolveAccessToken(tokens);
           if (!newToken) {
-            const apiError = normalizeApiError(
-              new Error("No token returned from refresh"),
-            );
-            clearAuth();
-            throw apiError;
+            handleAuthError({
+              code: "unauthorized",
+              message: "No token returned from refresh",
+              status: 401,
+            });
           }
           return newToken;
         } catch (err) {
-          trackAuthFailureError(err);
-          handleAuthFailure();
-          throw err;
+          handleAuthError(err);
         } finally {
           setIsRefreshing(false);
           refreshPromise = null;
@@ -247,17 +137,25 @@ api.interceptors.response.use(
         }
         return api(originalRequest);
       } catch (err) {
-        return Promise.reject(normalizeApiError(err));
+        try {
+          handleAuthError(err);
+        } catch (authError) {
+          return Promise.reject(authError);
+        }
       }
     }
 
     const normalizedError = normalizeApiError(error);
-    if (normalizedError.status === 401 && !isAuthFailureHandled(error)) {
-      trackAuthFailureError(error);
-      handleAuthFailure();
+    if (normalizedError.status === 401) {
+      try {
+        handleAuthError(error);
+      } catch (authError) {
+        return Promise.reject(authError);
+      }
     }
     return Promise.reject(normalizedError);
   },
 );
 
 export const parseApiError = normalizeApiError;
+export { setAuthFailureHandler };
