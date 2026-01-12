@@ -1,6 +1,11 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { env } from "next-runtime-env";
-import { handleAuthError, normalizeApiError, setAuthFailureHandler } from "./auth-errors";
+import {
+  handleAuthError,
+  normalizeApiError,
+  setAuthFailureHandler,
+  type ApiError,
+} from "./auth-errors";
 import { getAuthStore } from "@/store/auth-store";
 export type { ApiError } from "./auth-errors";
 
@@ -111,11 +116,11 @@ api.interceptors.response.use(
           // In that case we reuse the last known access token to avoid dropping the user abruptly.
           const newToken = resolveAccessToken(tokens);
           if (!newToken) {
-            const refreshError = normalizeApiError({
+            const refreshError: ApiError = {
               code: "unauthorized",
               message: "No token returned from refresh",
               status: 401,
-            });
+            };
             throw handleAuthError(refreshError);
           }
           return newToken;

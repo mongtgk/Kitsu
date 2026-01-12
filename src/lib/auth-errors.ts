@@ -111,13 +111,23 @@ const navigateHome = () => {
   window.location.replace(ROUTES.HOME);
 };
 
+let isHandlingAuthFailure = false;
+
 const handleAuthFailure = () => {
-  getAuthStore().getState().clearAuth();
-  if (authFailureHandlers.size > 0) {
-    authFailureHandlers.forEach((handler) => handler(ROUTES.HOME));
+  if (isHandlingAuthFailure) {
     return;
   }
-  navigateHome();
+  isHandlingAuthFailure = true;
+  try {
+    getAuthStore().getState().clearAuth();
+    if (authFailureHandlers.size > 0) {
+      authFailureHandlers.forEach((handler) => handler(ROUTES.HOME));
+      return;
+    }
+    navigateHome();
+  } finally {
+    isHandlingAuthFailure = false;
+  }
 };
 
 // Always throws a normalized auth error; logout decisions are centralized here.
