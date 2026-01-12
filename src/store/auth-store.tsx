@@ -33,7 +33,8 @@ export interface IAuthStore {
   setIsRefreshing: (val: boolean) => void;
 }
 
-type AuthState = Pick<IAuthStore, "auth" | "isRefreshing">;
+type AuthInitState = Pick<IAuthStore, "auth" | "isRefreshing">;
+type PersistedAuthState = Pick<IAuthStore, "auth">;
 type AuthStoreApi = StoreApi<IAuthStore> & {
   persist?: {
     hasHydrated: () => boolean;
@@ -41,7 +42,7 @@ type AuthStoreApi = StoreApi<IAuthStore> & {
   };
 };
 
-const defaultState: AuthState = {
+const defaultState: AuthInitState = {
   auth: null,
   isRefreshing: false,
 };
@@ -70,7 +71,7 @@ const resolveStorage = () => {
   };
 };
 
-const createAuthStore = (initState: AuthState = defaultState) => {
+const createAuthStore = (initState: AuthInitState = defaultState) => {
   const authStore = createStore<IAuthStore>()(
     persist(
       (set) => ({
@@ -92,7 +93,7 @@ const createAuthStore = (initState: AuthState = defaultState) => {
         merge: (persistedState, currentState) => {
           const mergedState = {
             ...currentState,
-            ...(persistedState as AuthState),
+            ...(persistedState as PersistedAuthState),
           };
 
           return {
@@ -136,7 +137,7 @@ let clientStore: AuthStoreApi | null = null;
 
 const getIsServer = () => typeof document === "undefined";
 
-export const getAuthStore = (initState?: AuthState) => {
+export const getAuthStore = (initState?: AuthInitState) => {
   if (getIsServer()) {
     return createAuthStore({ ...defaultState, ...initState });
   }
@@ -162,7 +163,7 @@ export const AuthStoreProvider = ({
   initialState,
 }: {
   children: ReactNode;
-  initialState?: AuthState;
+  initialState?: AuthInitState;
 }) => {
   const storeRef = useRef<AuthStoreApi>();
   if (!storeRef.current) {
@@ -194,10 +195,11 @@ export const useAuthStatus = () =>
 export const useAuthHydrated = () => {
   const store = useAuthStoreApi();
   const authStatus = useStore(store, (state) => state.authStatus);
-  const hydrationFinished = store.persist?.hasHydrated?.() ?? false;
-  const hydrationFinalizedRef = useRef(hydrationFinished);
+  const hydrationFinalizedRef = useRef(
+    store.persist?.hasHydrated?.() ?? false,
+  );
   const [hydrated, setHydrated] = useState(
-    () => hydrationFinished,
+    () => hydrationFinalizedRef.current,
   );
 
   useEffect(() => {
