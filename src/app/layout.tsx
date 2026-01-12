@@ -68,11 +68,11 @@ export default function RootLayout({
         />
         <Script id="google-analytics" strategy="afterInteractive">
           {`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
+           window.dataLayer = window.dataLayer || [];
+           function gtag(){dataLayer.push(arguments);}
+           gtag('js', new Date());
 
-          gtag('config', 'G-X9RZ58XPH1');`}
+           gtag('config', 'G-X9RZ58XPH1');`}
         </Script>
         <PublicEnvScript />
         <link rel="icon" href="/icon.png" type="image/png" sizes="192x192" />
