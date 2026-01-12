@@ -60,27 +60,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <StoreProvider>
-      <html lang="en" suppressHydrationWarning>
-        <head>
-          <Script
-            src="https://www.googletagmanager.com/gtag/js?id=G-X9RZ58XPH1"
-            strategy="afterInteractive"
-          />
-          <Script id="google-analytics" strategy="afterInteractive">
-            {`
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-X9RZ58XPH1"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
            window.dataLayer = window.dataLayer || [];
            function gtag(){dataLayer.push(arguments);}
            gtag('js', new Date());
 
            gtag('config', 'G-X9RZ58XPH1');`}
-          </Script>
-          <PublicEnvScript />
-          <link rel="icon" href="/icon.png" type="image/png" sizes="192x192" />
-        </head>
-        <body
-          className={`${geistSans.className} antialiased max-w-[100vw] overflow-x-hidden`}
-        >
+        </Script>
+        <PublicEnvScript />
+        <link rel="icon" href="/icon.png" type="image/png" sizes="192x192" />
+      </head>
+      <body
+        className={`${geistSans.className} antialiased max-w-[100vw] overflow-x-hidden`}
+      >
+        <StoreProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
@@ -94,8 +94,8 @@ export default function RootLayout({
             </QueryProvider>
           </ThemeProvider>
           <Toaster />
-        </body>
-      </html>
-    </StoreProvider>
+        </StoreProvider>
+      </body>
+    </html>
   );
 }
