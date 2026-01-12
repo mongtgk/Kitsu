@@ -22,8 +22,11 @@ export type IAuth = {
   refreshToken: string;
 };
 
+export type AuthStatus = "unknown" | "authenticated" | "unauthenticated";
+
 export interface IAuthStore {
   auth: IAuth | null;
+  authStatus: AuthStatus;
   setAuth: (state: IAuth) => void;
   clearAuth: () => void;
   isRefreshing: boolean;
@@ -42,6 +45,9 @@ const defaultState: AuthState = {
   auth: null,
   isRefreshing: false,
 };
+
+const resolveAuthStatus = (auth: IAuth | null): AuthStatus =>
+  auth ? "authenticated" : "unauthenticated";
 
 const resolveStorage = () => {
   if (typeof document !== "undefined" && "localStorage" in globalThis) {
@@ -64,14 +70,16 @@ const resolveStorage = () => {
   };
 };
 
-const createAuthStore = (initState: AuthState = defaultState) =>
-  createStore<IAuthStore>()(
+const createAuthStore = (initState: AuthState = defaultState) => {
+  const authStore = createStore<IAuthStore>()(
     persist(
       (set) => ({
         ...defaultState,
         ...initState,
-        setAuth: (state: IAuth) => set({ auth: state }),
-        clearAuth: () => set({ auth: null }),
+        authStatus: "unknown",
+        setAuth: (state: IAuth) =>
+          set({ auth: state, authStatus: "authenticated" }),
+        clearAuth: () => set({ auth: null, authStatus: "unauthenticated" }),
         setIsRefreshing: (val: boolean) => set({ isRefreshing: val }),
       }),
       {
@@ -81,9 +89,42 @@ const createAuthStore = (initState: AuthState = defaultState) =>
         }),
         version: 0,
         storage: createJSONStorage(() => resolveStorage()),
+        merge: (persistedState, currentState) => {
+          const mergedState = {
+            ...currentState,
+            ...(persistedState as AuthState),
+          };
+
+          return {
+            ...mergedState,
+            authStatus: resolveAuthStatus(mergedState.auth),
+          };
+        },
       },
     ),
   ) as AuthStoreApi;
+
+  const finalizeAuthStatus = () => {
+    authStore.setState(
+      {
+        authStatus: resolveAuthStatus(authStore.getState().auth),
+      },
+      false,
+    );
+  };
+
+  if (authStore.persist?.hasHydrated?.()) {
+    finalizeAuthStatus();
+  } else {
+    authStore.persist?.onFinishHydration?.(finalizeAuthStatus);
+  }
+
+  if (!authStore.persist?.onFinishHydration) {
+    finalizeAuthStatus();
+  }
+
+  return authStore;
+};
 
 let clientStore: AuthStoreApi | null = null;
 
@@ -96,10 +137,11 @@ export const getAuthStore = (initState?: AuthState) => {
   if (!clientStore) {
     clientStore = createAuthStore({ ...defaultState, ...initState });
   } else if (initState) {
+    const mergedState = { ...clientStore.getState(), ...initState };
     clientStore.setState(
       {
-        ...clientStore.getState(),
-        ...initState,
+        ...mergedState,
+        authStatus: resolveAuthStatus(mergedState.auth),
       },
       true,
     );
@@ -140,17 +182,25 @@ export const useAuthSelector = <T,>(selector: (state: IAuthStore) => T) => {
   return useStore(store, selector);
 };
 
+export const useAuthStatus = () =>
+  useAuthSelector((state) => state.authStatus);
+
 export const useAuthHydrated = () => {
   const store = useAuthStoreApi();
+  const authStatus = useStore(store, (state) => state.authStatus);
   const [hydrated, setHydrated] = useState(
-    store.persist?.hasHydrated?.() ?? false,
+    store.persist?.hasHydrated?.() ?? authStatus !== "unknown",
   );
 
   useEffect(() => {
+    if (authStatus !== "unknown") {
+      setHydrated(true);
+      return;
+    }
     if (hydrated) return;
     const unsub = store.persist?.onFinishHydration?.(() => setHydrated(true));
     return () => unsub?.();
-  }, [store, hydrated]);
+  }, [store, hydrated, authStatus]);
 
   return hydrated;
 };
