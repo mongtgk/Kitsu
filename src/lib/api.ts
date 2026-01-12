@@ -111,11 +111,11 @@ api.interceptors.response.use(
           // In that case we reuse the last known access token to avoid dropping the user abruptly.
           const newToken = resolveAccessToken(tokens);
           if (!newToken) {
-            const refreshError = {
+            const refreshError = normalizeApiError({
               code: "unauthorized",
               message: "No token returned from refresh",
               status: 401,
-            };
+            });
             throw handleAuthError(refreshError);
           }
           return newToken;

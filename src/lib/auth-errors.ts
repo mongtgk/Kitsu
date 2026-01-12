@@ -66,9 +66,15 @@ export const normalizeApiError = (error: unknown): ApiError => {
     const candidate = error as ApiError;
     if (
       typeof candidate.code === "string" &&
-      typeof candidate.message === "string"
+      typeof candidate.message === "string" &&
+      (candidate.status === undefined || typeof candidate.status === "number")
     ) {
-      return candidate;
+      return {
+        code: candidate.code,
+        message: candidate.message,
+        status: candidate.status,
+        details: candidate.details,
+      };
     }
   }
   return {
