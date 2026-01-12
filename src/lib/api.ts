@@ -192,21 +192,14 @@ api.interceptors.response.use(
       }
 
       if (authStore.getState().isRefreshing) {
-        if (!refreshPromise) {
-          // eslint-disable-next-line no-console
-          console.warn("Refresh state desynchronized; starting new refresh");
-          refreshPromise = null;
-          setIsRefreshing(true);
-        } else {
-          return refreshPromise
-            .then((token) => {
-              if (token && originalRequest.headers) {
-                originalRequest.headers.Authorization = `Bearer ${token}`;
-              }
-              return api(originalRequest);
-            })
-            .catch((err) => Promise.reject(normalizeApiError(err)));
-        }
+        return refreshPromise!
+          .then((token) => {
+            if (token && originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+            }
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(normalizeApiError(err)));
       }
 
       setIsRefreshing(true);
