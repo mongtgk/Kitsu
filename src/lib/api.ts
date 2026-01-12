@@ -1,7 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { env } from "next-runtime-env";
 import { ROUTES } from "@/constants/routes";
-import { useAuthStore } from "@/store/auth-store";
+import { getAuthStore } from "@/store/auth-store";
 
 const baseURL =
   env("NEXT_PUBLIC_API_BASE_URL") ||
@@ -57,7 +57,7 @@ const extractTokens = (payload: TokenPayload) => {
 };
 
 const resolveAccessToken = (tokens: ReturnType<typeof extractTokens>) => {
-  const fallbackToken = useAuthStore.getState().auth?.accessToken || null;
+  const fallbackToken = getAuthStore().getState().auth?.accessToken || null;
   if (!tokens.accessToken && fallbackToken) {
     // eslint-disable-next-line no-console
     console.warn("Using existing access token because refresh returned none");
@@ -69,31 +69,67 @@ export type ApiError = {
   code: string;
   message: string;
   status?: number;
+  details?: unknown;
 };
 
 const normalizeApiError = (error: unknown): ApiError => {
   if (error instanceof AxiosError) {
     const status = error.response?.status;
-    const payload = error.response?.data as { code?: string; message?: string } | undefined;
+    const payload = error.response?.data as {
+      code?: string;
+      message?: string;
+      details?: unknown;
+    } | undefined;
     const baseMessage =
       typeof payload?.message === "string"
         ? payload.message
         : error.message || "Request failed. Please try again.";
     if (status === 401) {
-      return { code: payload?.code || "unauthorized", message: payload?.message || "Session expired. Please sign in again.", status };
+      return {
+        code: payload?.code || "unauthorized",
+        message:
+          payload?.message || "Session expired. Please sign in again.",
+        details: payload?.details,
+        status,
+      };
     }
     if (status === 403) {
-      return { code: payload?.code || "forbidden", message: payload?.message || "Access denied.", status };
+      return {
+        code: payload?.code || "forbidden",
+        message: payload?.message || "Access denied.",
+        details: payload?.details,
+        status,
+      };
     }
     if (status && status >= 500) {
-      return { code: payload?.code || "server_error", message: payload?.message || "Something went wrong on our side. Please try again.", status };
+      return {
+        code: payload?.code || "server_error",
+        message:
+          payload?.message ||
+          "Something went wrong on our side. Please try again.",
+        details: payload?.details,
+        status,
+      };
     }
     if (error.code === "ECONNABORTED") {
-      return { code: "timeout", message: "Request timed out. Please retry.", status };
+      return {
+        code: "timeout",
+        message: "Request timed out. Please retry.",
+        status,
+        details: payload?.details,
+      };
     }
-    return { code: payload?.code || "request_failed", message: baseMessage, status };
+    return {
+      code: payload?.code || "request_failed",
+      message: baseMessage,
+      status,
+      details: payload?.details,
+    };
   }
-  return { code: "unknown_error", message: "Unexpected error occurred." };
+  return {
+    code: "unknown_error",
+    message: error instanceof Error ? error.message : "Unexpected error occurred.",
+  };
 };
 
 // Tracks error objects that already triggered auth handling to avoid duplicate redirects
@@ -132,7 +168,7 @@ const handleAuthFailure = () => {
   }
   isHandlingAuthFailure = true;
   try {
-    useAuthStore.getState().clearAuth();
+    getAuthStore().getState().clearAuth();
     if (authFailureHandlers.size > 0) {
       authFailureHandlers.forEach((handler) => handler(ROUTES.HOME));
       return;
@@ -144,7 +180,7 @@ const handleAuthFailure = () => {
 };
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = useAuthStore.getState().auth?.accessToken;
+  const token = getAuthStore().getState().auth?.accessToken;
   if (token) {
     // eslint-disable-next-line no-param-reassign
     config.headers.Authorization = `Bearer ${token}`;
@@ -161,11 +197,11 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      const refreshToken = useAuthStore.getState().auth?.refreshToken;
+      const refreshToken = getAuthStore().getState().auth?.refreshToken;
 
       if (!refreshToken) {
-        useAuthStore.getState().clearAuth();
-        return Promise.reject(error);
+        getAuthStore().getState().clearAuth();
+        return Promise.reject(normalizeApiError(error));
       }
 
       if (isRefreshing) {
@@ -178,7 +214,7 @@ api.interceptors.response.use(
             }
             return api(originalRequest);
           })
-          .catch((err) => Promise.reject(err));
+          .catch((err) => Promise.reject(normalizeApiError(err)));
       }
 
       isRefreshing = true;
@@ -188,24 +224,23 @@ api.interceptors.response.use(
           refresh_token: refreshToken,
         });
         const tokens = extractTokens(data as TokenPayload);
-        const updatedAuth = useAuthStore.getState().auth;
+        const updatedAuth = getAuthStore().getState().auth;
         if (updatedAuth) {
-          useAuthStore
-            .getState()
-            .setAuth({
-              ...updatedAuth,
-              accessToken: tokens.accessToken || updatedAuth.accessToken,
-              refreshToken: tokens.refreshToken || updatedAuth.refreshToken,
-            });
+          getAuthStore().getState().setAuth({
+            ...updatedAuth,
+            accessToken: tokens.accessToken || updatedAuth.accessToken,
+            refreshToken: tokens.refreshToken || updatedAuth.refreshToken,
+          });
         }
         // Prefer freshly issued token; fall back to stored token only when backend omits tokens
         // Some refresh endpoints may skip returning tokens if a session was just rotated.
         // In that case we reuse the last known access token to avoid dropping the user abruptly.
         const newToken = resolveAccessToken(tokens);
         if (!newToken) {
-          processQueue(new Error("No token returned from refresh"), null);
-          useAuthStore.getState().clearAuth();
-          return Promise.reject(new Error("No token returned from refresh"));
+          const apiError = normalizeApiError(new Error("No token returned from refresh"));
+          processQueue(apiError, null);
+          getAuthStore().getState().clearAuth();
+          return Promise.reject(apiError);
         }
         processQueue(null, newToken);
         if (originalRequest.headers && newToken) {
@@ -214,9 +249,10 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (err) {
         trackAuthFailureError(err);
-        processQueue(err, null);
+        const normalized = normalizeApiError(err);
+        processQueue(normalized, null);
         handleAuthFailure();
-        return Promise.reject(normalizeApiError(err));
+        return Promise.reject(normalized);
       } finally {
         isRefreshing = false;
       }
@@ -230,3 +266,5 @@ api.interceptors.response.use(
     return Promise.reject(normalizedError);
   },
 );
+
+export const parseApiError = normalizeApiError;

@@ -1,0 +1,89 @@
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useRef,
+} from "react";
+import { useStore } from "zustand";
+import { type StoreApi, createStore } from "zustand/vanilla";
+import { IAnimeDetails } from "@/types/anime-details";
+
+interface IAnimeStore {
+  anime: IAnimeDetails;
+  setAnime: (state: IAnimeDetails) => void;
+  selectedEpisode: string;
+  setSelectedEpisode: (state: string) => void;
+}
+
+type AnimeState = Pick<IAnimeStore, "anime" | "selectedEpisode">;
+type AnimeStoreApi = StoreApi<IAnimeStore>;
+
+const defaultState: AnimeState = {
+  anime: {} as IAnimeDetails,
+  selectedEpisode: "",
+};
+
+const createAnimeStore = (initState: AnimeState = defaultState) =>
+  createStore<IAnimeStore>()((set) => ({
+    ...defaultState,
+    ...initState,
+    setAnime: (state: IAnimeDetails) => set({ anime: state }),
+    setSelectedEpisode: (state: string) => set({ selectedEpisode: state }),
+  }));
+
+let clientStore: AnimeStoreApi | null = null;
+
+const getIsServer = () => typeof document === "undefined";
+
+export const getAnimeStore = (initState?: AnimeState) => {
+  if (getIsServer()) {
+    return createAnimeStore({ ...defaultState, ...initState });
+  }
+  if (!clientStore) {
+    clientStore = createAnimeStore({ ...defaultState, ...initState });
+  } else if (initState) {
+    clientStore.setState(
+      { ...clientStore.getState(), ...initState },
+      true,
+    );
+  }
+  return clientStore;
+};
+
+const AnimeStoreContext = createContext<AnimeStoreApi | null>(null);
+
+export const AnimeStoreProvider = ({
+  children,
+  initialState,
+}: {
+  children: ReactNode;
+  initialState?: AnimeState;
+}) => {
+  const storeRef = useRef<AnimeStoreApi>();
+  if (!storeRef.current) {
+    storeRef.current = getAnimeStore(initialState);
+  }
+  return (
+    <AnimeStoreContext.Provider value={storeRef.current}>
+      {children}
+    </AnimeStoreContext.Provider>
+  );
+};
+
+const useAnimeStoreApi = () => {
+  const store = useContext(AnimeStoreContext);
+  if (!store) {
+    throw new Error("AnimeStoreProvider is missing in the component tree.");
+  }
+  return store;
+};
+
+export function useAnimeStore(): IAnimeStore;
+export function useAnimeStore<T>(selector: (state: IAnimeStore) => T): T;
+export function useAnimeStore<T>(selector?: (state: IAnimeStore) => T) {
+  const store = useAnimeStoreApi();
+  const boundSelector =
+    selector ??
+    ((state) => state as unknown as T);
+  return useStore(store, boundSelector);
+}
