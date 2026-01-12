@@ -141,8 +141,6 @@ export const useAuthSelector = <T,>(selector: (state: IAuthStore) => T) => {
   return useStore(store, selector);
 };
 
-export const useAuthStore = useAuthSelector;
-
 export const useAuthHydrated = () => {
   const store = useAuthStoreApi();
   const [hydrated, setHydrated] = useState(

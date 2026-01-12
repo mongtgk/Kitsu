@@ -29,10 +29,13 @@ type TokenPayload = {
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value?: unknown) => void;
-  reject: (error: ApiError | Error | null) => void;
+  reject: (error: ApiError | Error | undefined) => void;
 }> = [];
 
-const processQueue = (error: ApiError | Error | null, token: string | null = null) => {
+const processQueue = (
+  error: ApiError | Error | undefined,
+  token: string | null = null,
+) => {
   failedQueue.forEach((promise) => {
     if (error) {
       promise.reject(error);
@@ -242,7 +245,7 @@ api.interceptors.response.use(
           getAuthStore().getState().clearAuth();
           return Promise.reject(apiError);
         }
-        processQueue(null, newToken);
+        processQueue(undefined, newToken);
         if (originalRequest.headers && newToken) {
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
         }

@@ -6,7 +6,7 @@ import { ROUTES } from "@/constants/routes";
 
 import Container from "@/components/container";
 import AnimeCard from "@/components/anime-card";
-import { useAnimeStore } from "@/store/anime-store";
+import { useAnimeSelector } from "@/store/anime-store";
 
 import EpisodePlaylist from "@/components/episode-playlist";
 import { Heart } from "lucide-react";
@@ -27,7 +27,10 @@ type Props = {
 
 const Layout = (props: Props) => {
   const searchParams = useSearchParams();
-  const { setAnime, setSelectedEpisode } = useAnimeStore();
+  const setAnime = useAnimeSelector((state) => state.setAnime);
+  const setSelectedEpisode = useAnimeSelector(
+    (state) => state.setSelectedEpisode,
+  );
   const router = useRouter();
   const auth = useAuthSelector((state) => state.auth);
 
