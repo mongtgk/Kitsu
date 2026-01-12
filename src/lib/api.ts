@@ -195,7 +195,8 @@ api.interceptors.response.use(
         if (!refreshPromise) {
           // eslint-disable-next-line no-console
           console.warn("Refresh state desynchronized; starting new refresh");
-          setIsRefreshing(false);
+          refreshPromise = null;
+          setIsRefreshing(true);
         } else {
           return refreshPromise
             .then((token) => {
@@ -216,12 +217,12 @@ api.interceptors.response.use(
             refresh_token: refreshToken,
           });
           const tokens = extractTokens(data as TokenPayload);
-          const latestAuth = authStore.getState().auth;
-          if (latestAuth) {
+          const currentAuth = authStore.getState().auth;
+          if (currentAuth) {
             setAuth({
-              ...latestAuth,
-              accessToken: tokens.accessToken || latestAuth.accessToken,
-              refreshToken: tokens.refreshToken || latestAuth.refreshToken,
+              ...currentAuth,
+              accessToken: tokens.accessToken || currentAuth.accessToken,
+              refreshToken: tokens.refreshToken || currentAuth.refreshToken,
             });
           }
           // Prefer freshly issued token; fall back to stored token only when backend omits tokens
