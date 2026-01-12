@@ -146,5 +146,4 @@ api.interceptors.response.use(
   },
 );
 
-export const parseApiError = normalizeApiError;
 export { setAuthFailureHandler };
