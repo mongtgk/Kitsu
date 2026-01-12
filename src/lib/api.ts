@@ -183,14 +183,20 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       const authStore = getAuthStore();
-      const refreshToken = authStore.getState().auth?.refreshToken;
+      const authStoreState = authStore.getState();
+      const { clearAuth, setAuth, setIsRefreshing } = authStoreState;
+      const refreshToken = authStoreState.auth?.refreshToken;
 
       if (!refreshToken) {
-        getAuthStore().getState().clearAuth();
+        clearAuth();
         return Promise.reject(normalizeApiError(error));
       }
 
-      const ongoingRefresh = authStore.getState().isRefreshing ? refreshPromise : null;
+      if (authStoreState.isRefreshing && !refreshPromise) {
+        setIsRefreshing(false);
+      }
+
+      const ongoingRefresh = authStoreState.isRefreshing ? refreshPromise : null;
 
       if (ongoingRefresh) {
         return ongoingRefresh
@@ -203,7 +209,7 @@ api.interceptors.response.use(
           .catch((err) => Promise.reject(normalizeApiError(err)));
       }
 
-      authStore.getState().setIsRefreshing(true);
+      setIsRefreshing(true);
 
       refreshPromise = (async () => {
         try {
@@ -213,7 +219,7 @@ api.interceptors.response.use(
           const tokens = extractTokens(data as TokenPayload);
           const updatedAuth = authStore.getState().auth;
           if (updatedAuth) {
-            authStore.getState().setAuth({
+            setAuth({
               ...updatedAuth,
               accessToken: tokens.accessToken || updatedAuth.accessToken,
               refreshToken: tokens.refreshToken || updatedAuth.refreshToken,
@@ -227,7 +233,7 @@ api.interceptors.response.use(
             const apiError = normalizeApiError(
               new Error("No token returned from refresh"),
             );
-            authStore.getState().clearAuth();
+            clearAuth();
             throw apiError;
           }
           return newToken;
@@ -236,7 +242,7 @@ api.interceptors.response.use(
           handleAuthFailure();
           throw err;
         } finally {
-          authStore.getState().setIsRefreshing(false);
+          setIsRefreshing(false);
           refreshPromise = null;
         }
       })();
