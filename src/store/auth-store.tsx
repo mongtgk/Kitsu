@@ -194,29 +194,36 @@ export const useAuthStatus = () =>
 
 export const useAuthHydrated = () => {
   const store = useAuthStoreApi();
-  const authStatus = useStore(store, (state) => state.authStatus);
-  const hydrationFinalizedRef = useRef(
-    store.persist?.hasHydrated?.() ?? false,
-  );
   const [hydrated, setHydrated] = useState(
-    () => hydrationFinalizedRef.current,
+    () => store.persist?.hasHydrated?.() ?? false,
   );
 
   useEffect(() => {
-    if (hydrationFinalizedRef.current) return;
+    if (hydrated) return;
 
-    if (authStatus !== "unknown" || store.persist?.hasHydrated?.()) {
-      hydrationFinalizedRef.current = true;
+    if (store.getState().authStatus !== "unknown") {
       setHydrated(true);
       return;
     }
-    const unsub = store.persist?.onFinishHydration?.(() => {
-      if (hydrationFinalizedRef.current) return;
-      hydrationFinalizedRef.current = true;
-      setHydrated(true);
-    });
-    return () => unsub?.();
-  }, [store, authStatus]);
+
+    const unsubStatus = store.subscribe(
+      (state) => state.authStatus,
+      (status) => {
+        if (status !== "unknown") {
+          setHydrated(true);
+          unsubStatus();
+        }
+      },
+    );
+
+    const unsubHydration = store.persist?.onFinishHydration?.(() =>
+      setHydrated(true),
+    );
+    return () => {
+      unsubStatus();
+      unsubHydration?.();
+    };
+  }, [store, hydrated]);
 
   return hydrated;
 };
