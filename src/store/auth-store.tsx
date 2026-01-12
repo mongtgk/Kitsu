@@ -142,12 +142,12 @@ export const getAuthStore = (initState?: AuthInitState) => {
     clientStore = createAuthStore({ ...defaultState, ...initState });
   } else if (initState) {
     const currentState = clientStore.getState();
-    const nextAuth = initState.auth ?? currentState.auth;
+    const resolvedAuth = initState.auth ?? currentState.auth;
     clientStore.setState(
       {
         ...currentState,
         ...initState,
-        authStatus: resolveAuthStatus(nextAuth),
+        authStatus: resolveAuthStatus(resolvedAuth),
       },
       true,
     );
@@ -205,14 +205,11 @@ export const useAuthHydrated = () => {
       return;
     }
 
-    const unsubStatus = store.subscribe(
-      (state) => state.authStatus,
-      (status) => {
-        if (status !== "unknown") {
-          setHydrated(true);
-        }
-      },
-    );
+    const unsubStatus = store.subscribe((state) => {
+      if (state.authStatus !== "unknown") {
+        setHydrated(true);
+      }
+    });
 
     const unsubHydration = store.persist?.onFinishHydration?.(() =>
       setHydrated(true),
