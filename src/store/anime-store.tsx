@@ -120,5 +120,3 @@ export const useAnimeSelector = <T,>(selector: (state: IAnimeStore) => T) => {
   const store = useAnimeStoreApi();
   return useStore(store, selector);
 };
-
-export const useAnimeStore = useAnimeSelector;

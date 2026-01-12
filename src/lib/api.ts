@@ -29,7 +29,7 @@ type TokenPayload = {
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value?: unknown) => void;
-  reject: (error: ApiError | Error | undefined) => void;
+  reject: (error: ApiError | Error) => void;
 }> = [];
 
 const processQueue = (

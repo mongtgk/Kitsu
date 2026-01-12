@@ -72,7 +72,6 @@ const createAuthStore = (initState: AuthState = defaultState) =>
         ...initState,
         setAuth: (state: IAuth) => set({ auth: state }),
         clearAuth: () => set({ auth: null }),
-        isRefreshing: initState.isRefreshing ?? false,
         setIsRefreshing: (val: boolean) => set({ isRefreshing: val }),
       }),
       {
