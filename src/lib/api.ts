@@ -183,27 +183,24 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       const authStore = getAuthStore();
-      const authStoreState = authStore.getState();
-      const { clearAuth, setAuth, setIsRefreshing } = authStoreState;
-      const refreshToken = authStoreState.auth?.refreshToken;
+      const { clearAuth, setAuth, setIsRefreshing } = authStore.getState();
+      const refreshToken = authStore.getState().auth?.refreshToken;
 
       if (!refreshToken) {
         clearAuth();
         return Promise.reject(normalizeApiError(error));
       }
 
-      let isRefreshing = authStore.getState().isRefreshing;
-      if (isRefreshing && !refreshPromise) {
-        // eslint-disable-next-line no-console
-        console.warn("Refresh state desynchronized; resetting refresh flag");
-        setIsRefreshing(false);
-        isRefreshing = false;
-      }
-
-      const ongoingRefresh = isRefreshing ? refreshPromise : null;
-
-      if (ongoingRefresh) {
-        return ongoingRefresh
+      if (authStore.getState().isRefreshing) {
+        if (!refreshPromise) {
+          // eslint-disable-next-line no-console
+          console.warn("Refresh state desynchronized; resetting refresh flag");
+          setIsRefreshing(false);
+          return Promise.reject(
+            normalizeApiError(new Error("Refresh state desynchronized")),
+          );
+        }
+        return refreshPromise
           .then((token) => {
             if (token && originalRequest.headers) {
               originalRequest.headers.Authorization = `Bearer ${token}`;
