@@ -121,7 +121,8 @@ const handleAuthFailure = () => {
   }
 };
 
-export const handleAuthError = (error: unknown): never | void => {
+// Always throws a normalized auth error; logout decisions are centralized here.
+export const handleAuthError = (error: unknown): never => {
   const normalizedError = normalizeApiError(error);
 
   if (normalizedError.status === 401) {

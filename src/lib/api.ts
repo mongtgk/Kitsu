@@ -74,11 +74,7 @@ api.interceptors.response.use(
       const refreshToken = authStore.getState().auth?.refreshToken;
 
       if (!refreshToken) {
-        try {
-          handleAuthError(error);
-        } catch (authError) {
-          return Promise.reject(authError);
-        }
+        return handleAuthError(error);
       }
 
       if (authStore.getState().isRefreshing) {
@@ -89,9 +85,7 @@ api.interceptors.response.use(
             }
             return api(originalRequest);
           })
-          .catch((err) => {
-            handleAuthError(err);
-          });
+          .catch((err) => handleAuthError(err));
       }
 
       setIsRefreshing(true);
@@ -115,7 +109,7 @@ api.interceptors.response.use(
           // In that case we reuse the last known access token to avoid dropping the user abruptly.
           const newToken = resolveAccessToken(tokens);
           if (!newToken) {
-            handleAuthError({
+            return handleAuthError({
               code: "unauthorized",
               message: "No token returned from refresh",
               status: 401,
@@ -137,21 +131,13 @@ api.interceptors.response.use(
         }
         return api(originalRequest);
       } catch (err) {
-        try {
-          handleAuthError(err);
-        } catch (authError) {
-          return Promise.reject(authError);
-        }
+        return handleAuthError(err);
       }
     }
 
     const normalizedError = normalizeApiError(error);
     if (normalizedError.status === 401) {
-      try {
-        handleAuthError(error);
-      } catch (authError) {
-        return Promise.reject(authError);
-      }
+      return handleAuthError(error);
     }
     return Promise.reject(normalizedError);
   },
