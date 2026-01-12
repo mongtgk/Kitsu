@@ -109,11 +109,14 @@ api.interceptors.response.use(
           // In that case we reuse the last known access token to avoid dropping the user abruptly.
           const newToken = resolveAccessToken(tokens);
           if (!newToken) {
-            return handleAuthError({
-              code: "unauthorized",
-              message: "No token returned from refresh",
-              status: 401,
-            });
+            const refreshError = new AxiosError(
+              "No token returned from refresh",
+              undefined,
+              undefined,
+              undefined,
+              { status: 401 } as unknown as AxiosError["response"],
+            );
+            return handleAuthError(refreshError);
           }
           return newToken;
         } catch (err) {

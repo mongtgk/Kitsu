@@ -64,7 +64,10 @@ export const normalizeApiError = (error: unknown): ApiError => {
   }
   if (error && typeof error === "object") {
     const candidate = error as ApiError;
-    if (candidate.code && candidate.message) {
+    if (
+      typeof candidate.code === "string" &&
+      typeof candidate.message === "string"
+    ) {
       return candidate;
     }
   }
