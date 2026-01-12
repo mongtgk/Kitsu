@@ -194,8 +194,7 @@ api.interceptors.response.use(
       if (authStore.getState().isRefreshing) {
         if (!refreshPromise) {
           // eslint-disable-next-line no-console
-          console.warn("Refresh state desynchronized; resetting refresh flag");
-          setIsRefreshing(false);
+          console.warn("Refresh state desynchronized; starting new refresh");
         } else {
           return refreshPromise
             .then((token) => {
