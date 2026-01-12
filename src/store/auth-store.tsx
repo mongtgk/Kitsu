@@ -198,21 +198,31 @@ export const useAuthHydrated = () => {
   );
 
   useEffect(() => {
+    const markHydrated = () =>
+      setHydrated((prev) => {
+        if (prev) return prev;
+        return true;
+      });
+
     if (hydrated) return;
 
     if (store.getState().authStatus !== "unknown") {
-      setHydrated(true);
+      markHydrated();
       return;
     }
 
-    const unsubStatus = store.subscribe((state) => {
-      if (state.authStatus !== "unknown") {
-        setHydrated(true);
-      }
-    });
+    const unsubStatus = store.subscribe(
+      (state) => state.authStatus,
+      (status) => {
+        if (status !== "unknown") {
+          markHydrated();
+        }
+      },
+      { equalityFn: Object.is },
+    );
 
     const unsubHydration = store.persist?.onFinishHydration?.(() =>
-      setHydrated(true),
+      markHydrated(),
     );
     return () => {
       unsubStatus();
