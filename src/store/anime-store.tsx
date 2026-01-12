@@ -18,8 +18,46 @@ interface IAnimeStore {
 type AnimeState = Pick<IAnimeStore, "anime" | "selectedEpisode">;
 type AnimeStoreApi = StoreApi<IAnimeStore>;
 
+const defaultAnimeDetails: IAnimeDetails = {
+  anime: {
+    info: {
+      id: "",
+      anilistId: 0,
+      malId: 0,
+      name: "",
+      poster: "",
+      description: "",
+      stats: {
+        rating: "",
+        quality: "",
+        episodes: { sub: 0, dub: 0 },
+        type: "",
+        duration: "",
+      },
+      promotionalVideos: [],
+      charactersVoiceActors: [],
+    },
+    moreInfo: {
+      japanese: "",
+      synonyms: "",
+      aired: "",
+      premiered: "",
+      duration: "",
+      status: "",
+      malscore: "",
+      genres: [],
+      studios: "",
+      producers: [],
+    },
+  },
+  seasons: [],
+  mostPopularAnimes: [],
+  relatedAnimes: [],
+  recommendedAnimes: [],
+};
+
 const defaultState: AnimeState = {
-  anime: {} as IAnimeDetails,
+  anime: defaultAnimeDetails,
   selectedEpisode: "",
 };
 
@@ -81,4 +119,9 @@ const useAnimeStoreApi = () => {
 export const useAnimeStore = () => {
   const store = useAnimeStoreApi();
   return useStore(store);
+};
+
+export const useAnimeSelector = <T,>(selector: (state: IAnimeStore) => T) => {
+  const store = useAnimeStoreApi();
+  return useStore(store, selector);
 };
