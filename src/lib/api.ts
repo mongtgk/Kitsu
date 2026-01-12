@@ -26,25 +26,7 @@ type TokenPayload = {
   refreshToken?: string;
 };
 
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (error: ApiError | Error) => void;
-}> = [];
-
-const processQueue = (
-  error: ApiError | Error | undefined,
-  token: string | null = null,
-) => {
-  failedQueue.forEach((promise) => {
-    if (error) {
-      promise.reject(error);
-    } else {
-      promise.resolve(token);
-    }
-  });
-  failedQueue = [];
-};
+let refreshPromise: Promise<string | null> | null = null;
 
 const extractTokens = (payload: TokenPayload) => {
   const accessToken =
@@ -200,17 +182,17 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      const refreshToken = getAuthStore().getState().auth?.refreshToken;
+      const authStore = getAuthStore();
+      const { clearAuth, setAuth, setIsRefreshing } = authStore.getState();
+      const refreshToken = authStore.getState().auth?.refreshToken;
 
       if (!refreshToken) {
-        getAuthStore().getState().clearAuth();
+        clearAuth();
         return Promise.reject(normalizeApiError(error));
       }
 
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
+      if (authStore.getState().isRefreshing) {
+        return refreshPromise!
           .then((token) => {
             if (token && originalRequest.headers) {
               originalRequest.headers.Authorization = `Bearer ${token}`;
@@ -220,44 +202,52 @@ api.interceptors.response.use(
           .catch((err) => Promise.reject(normalizeApiError(err)));
       }
 
-      isRefreshing = true;
+      setIsRefreshing(true);
+
+      refreshPromise = (async () => {
+        try {
+          const { data } = await authClient.post("/auth/refresh", {
+            refresh_token: refreshToken,
+          });
+          const tokens = extractTokens(data as TokenPayload);
+          const currentAuth = authStore.getState().auth;
+          if (currentAuth) {
+            setAuth({
+              ...currentAuth,
+              accessToken: tokens.accessToken || currentAuth.accessToken,
+              refreshToken: tokens.refreshToken || currentAuth.refreshToken,
+            });
+          }
+          // Prefer freshly issued token; fall back to stored token only when backend omits tokens
+          // Some refresh endpoints may skip returning tokens if a session was just rotated.
+          // In that case we reuse the last known access token to avoid dropping the user abruptly.
+          const newToken = resolveAccessToken(tokens);
+          if (!newToken) {
+            const apiError = normalizeApiError(
+              new Error("No token returned from refresh"),
+            );
+            clearAuth();
+            throw apiError;
+          }
+          return newToken;
+        } catch (err) {
+          trackAuthFailureError(err);
+          handleAuthFailure();
+          throw err;
+        } finally {
+          setIsRefreshing(false);
+          refreshPromise = null;
+        }
+      })();
 
       try {
-        const { data } = await authClient.post("/auth/refresh", {
-          refresh_token: refreshToken,
-        });
-        const tokens = extractTokens(data as TokenPayload);
-        const updatedAuth = getAuthStore().getState().auth;
-        if (updatedAuth) {
-          getAuthStore().getState().setAuth({
-            ...updatedAuth,
-            accessToken: tokens.accessToken || updatedAuth.accessToken,
-            refreshToken: tokens.refreshToken || updatedAuth.refreshToken,
-          });
-        }
-        // Prefer freshly issued token; fall back to stored token only when backend omits tokens
-        // Some refresh endpoints may skip returning tokens if a session was just rotated.
-        // In that case we reuse the last known access token to avoid dropping the user abruptly.
-        const newToken = resolveAccessToken(tokens);
-        if (!newToken) {
-          const apiError = normalizeApiError(new Error("No token returned from refresh"));
-          processQueue(apiError, null);
-          getAuthStore().getState().clearAuth();
-          return Promise.reject(apiError);
-        }
-        processQueue(undefined, newToken);
+        const newToken = await refreshPromise;
         if (originalRequest.headers && newToken) {
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
         }
         return api(originalRequest);
       } catch (err) {
-        trackAuthFailureError(err);
-        const normalized = normalizeApiError(err);
-        processQueue(normalized, null);
-        handleAuthFailure();
-        return Promise.reject(normalized);
-      } finally {
-        isRefreshing = false;
+        return Promise.reject(normalizeApiError(err));
       }
     }
 
