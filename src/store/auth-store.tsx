@@ -117,11 +117,15 @@ const createAuthStore = (initState: AuthInitState = defaultState) => {
   const persistApi = authStore.persist;
   if (persistApi?.hasHydrated?.()) {
     finalizeAuthStatus();
-  } else if (persistApi?.onFinishHydration) {
-    persistApi.onFinishHydration(finalizeAuthStatus);
-  } else {
-    finalizeAuthStatus();
+    return authStore;
   }
+
+  if (persistApi?.onFinishHydration) {
+    persistApi.onFinishHydration(finalizeAuthStatus);
+    return authStore;
+  }
+
+  finalizeAuthStatus();
 
   return authStore;
 };
@@ -137,11 +141,13 @@ export const getAuthStore = (initState?: AuthInitState) => {
   if (!clientStore) {
     clientStore = createAuthStore({ ...defaultState, ...initState });
   } else if (initState) {
-    const mergedState = { ...clientStore.getState(), ...initState };
+    const currentState = clientStore.getState();
+    const nextAuth = initState.auth ?? currentState.auth;
     clientStore.setState(
       {
-        ...mergedState,
-        authStatus: resolveAuthStatus(mergedState.auth),
+        ...currentState,
+        ...initState,
+        authStatus: resolveAuthStatus(nextAuth),
       },
       true,
     );
