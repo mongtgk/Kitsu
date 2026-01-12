@@ -183,7 +183,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       const authStore = getAuthStore();
-      const { clearAuth, setIsRefreshing } = authStore.getState();
+      const { clearAuth, setAuth, setIsRefreshing } = authStore.getState();
       const refreshToken = authStore.getState().auth?.refreshToken;
 
       if (!refreshToken) {
@@ -195,6 +195,7 @@ api.interceptors.response.use(
         if (!refreshPromise) {
           // eslint-disable-next-line no-console
           console.warn("Refresh state desynchronized; starting new refresh");
+          setIsRefreshing(false);
         } else {
           return refreshPromise
             .then((token) => {
@@ -215,15 +216,14 @@ api.interceptors.response.use(
             refresh_token: refreshToken,
           });
           const tokens = extractTokens(data as TokenPayload);
-          authStore.setState((state) => {
-            if (!state.auth) return state;
-            const nextAuth = {
-              ...state.auth,
-              accessToken: tokens.accessToken || state.auth.accessToken,
-              refreshToken: tokens.refreshToken || state.auth.refreshToken,
-            };
-            return { ...state, auth: nextAuth };
-          });
+          const latestAuth = authStore.getState().auth;
+          if (latestAuth) {
+            setAuth({
+              ...latestAuth,
+              accessToken: tokens.accessToken || latestAuth.accessToken,
+              refreshToken: tokens.refreshToken || latestAuth.refreshToken,
+            });
+          }
           // Prefer freshly issued token; fall back to stored token only when backend omits tokens
           // Some refresh endpoints may skip returning tokens if a session was just rotated.
           // In that case we reuse the last known access token to avoid dropping the user abruptly.
