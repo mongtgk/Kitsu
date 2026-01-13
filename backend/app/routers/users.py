@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..auth.helpers import require_permission
 from ..dependencies import get_current_user, get_db
 from ..models.user import User
 from ..schemas.user import UserCreate, UserRead
@@ -24,6 +25,7 @@ async def update_current_user_profile(
     avatar: UploadFile | None = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("write:profile")),
 ) -> UserRead:
     if avatar is None:
         return current_user
