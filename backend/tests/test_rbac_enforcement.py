@@ -91,22 +91,6 @@ class DummyProgress:
 
 
 def make_client(role: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    app = FastAPI()
-    app.include_router(favorites.router)
-    app.include_router(watch.router)
-    app.include_router(users.router)
-
-    dummy_user = DummyUser()
-
-    async def override_role() -> str:
-        return role
-
-    async def override_user() -> DummyUser:
-        return dummy_user
-
-    async def override_db():
-        yield DummySession()
-
     async def fake_remove_favorite_use_case(
         _db: DummySession, user_id: uuid.UUID, anime_id: uuid.UUID
     ) -> None:
@@ -124,6 +108,22 @@ def make_client(role: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
     monkeypatch.setattr(favorites, "remove_favorite_use_case", fake_remove_favorite_use_case)
     monkeypatch.setattr(watch, "update_progress", fake_update_progress)
+
+    app = FastAPI()
+    app.include_router(favorites.router)
+    app.include_router(watch.router)
+    app.include_router(users.router)
+
+    dummy_user = DummyUser()
+
+    async def override_role() -> str:
+        return role
+
+    async def override_user() -> DummyUser:
+        return dummy_user
+
+    async def override_db():
+        yield DummySession()
 
     app.dependency_overrides[get_current_role] = override_role
     app.dependency_overrides[get_current_user] = override_user
