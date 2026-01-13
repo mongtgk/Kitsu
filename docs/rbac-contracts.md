@@ -28,7 +28,7 @@ This document locks the RBAC contract between the backend API, permissions, and 
 | Session refresh effect | `src/components/navbar.tsx` | POST /auth/refresh | public | Background call when a refresh token exists; visibility-only trigger. |
 | Add/remove favorites (detail page) | `src/app/anime/[slug]/page.tsx` | POST /favorites, DELETE /favorites/{anime_id} | write:content | Button visibility-only (hidden without write:content). |
 | Add/remove favorites (watch layout) | `src/app/anime/watch/layout.tsx` | POST /favorites, DELETE /favorites/{anime_id} | write:content | Button visibility-only (hidden without write:content). |
-| Anilist import dialog | `src/app/profile/[username]/components/anilist-import.tsx` | POST /api/import/anilist → POST /favorites | write:profile for visibility, backend requires write:content | Dialog is visibility-only behind write:profile; backend favorites calls still need write:content. |
+| AniList import dialog | `src/app/profile/[username]/components/anilist-import.tsx` | POST /api/import/anilist → POST /favorites | write:profile for visibility, backend requires write:content | Dialog is visibility-only behind write:profile; backend favorites calls still need write:content. |
 | Auto bookmark from player (inactive component) | `src/components/kitsune-player.tsx` | POST /favorites | write:content | Component is currently not mounted; when enabled it uses background POST with no additional gating. |
 
 ## Consistency check
@@ -40,5 +40,5 @@ This document locks the RBAC contract between the backend API, permissions, and 
 ## P2 strict-mode plan (no code changes now)
 
 - `write:content`: POST/DELETE `/favorites` and POST `/watch/progress` will hard-deny when the permission is missing. UI plan — keep favorites buttons hidden for unauthorized roles and block any background player auto-bookmark/progress sync when re-enabled.
-- `write:profile`: PATCH `/users/me` and the profile import entry point will hard-deny when missing `write:profile`. UI plan — keep Anilist import hidden/disabled without the permission and disable any profile editing affordances before calling the API.
+- `write:profile`: PATCH `/users/me` and the profile import entry point will hard-deny when missing `write:profile`. UI plan — keep AniList import hidden/disabled without the permission and disable any profile editing affordances before calling the API.
 - Auth endpoints remain public. System/internal stubs (`/collections`, `/views`, `/users`) need classification before enabling strict checks.
