@@ -106,6 +106,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=lifespan)
 
+# Convert allowed_origins to a set for O(1) lookup performance in middleware
+_allowed_origins_set = set(settings.allowed_origins)
+
 
 class OptionsPreflightMiddleware(BaseHTTPMiddleware):
     """
@@ -118,8 +121,8 @@ class OptionsPreflightMiddleware(BaseHTTPMiddleware):
             origin = request.headers.get("origin")
             response = Response(status_code=status.HTTP_204_NO_CONTENT)
             
-            # Add CORS headers for allowed origins
-            if origin and origin in settings.allowed_origins:
+            # Add CORS headers for allowed origins (O(1) lookup)
+            if origin and origin in _allowed_origins_set:
                 response.headers["Access-Control-Allow-Origin"] = origin
                 response.headers["Access-Control-Allow-Credentials"] = "true"
                 response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
