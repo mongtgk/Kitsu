@@ -31,6 +31,9 @@ const Page = () => {
   const auth = useAuthSelector((state) => state.auth);
   const permissions = usePermissions();
   const canWriteContent = permissions.includes("write:content");
+  // RBAC NOTE:
+  // write:content — visibility only (P1.4)
+  // enforcement planned in P2
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteId, setFavoriteId] = useState<string | null>(null);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
