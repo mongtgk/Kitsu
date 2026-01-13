@@ -2,6 +2,7 @@ from typing import Any
 
 from bs4 import BeautifulSoup
 from fastapi import APIRouter, HTTPException, Query, status
+import httpx
 
 from .common import SRC_AJAX_URL, SRC_BASE_URL, get_client
 
@@ -15,18 +16,34 @@ async def search() -> dict[str, Any]:
 
 
 async def fetch_search_suggestions(query: str) -> dict[str, Any]:
-    async with await get_client() as client:
-        resp = await client.get(
-            f"{SRC_AJAX_URL}/search/suggest",
-            params={"keyword": query},
-            headers={
-                "Accept": "*/*",
-                "Referer": SRC_BASE_URL,
-                "X-Requested-With": "XMLHttpRequest",
-            },
-        )
-        resp.raise_for_status()
-        html = resp.json().get("html", "")
+    try:
+        async with await get_client() as client:
+            resp = await client.get(
+                f"{SRC_AJAX_URL}/search/suggest",
+                params={"keyword": query},
+                headers={
+                    "Accept": "*/*",
+                    "Referer": SRC_BASE_URL,
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+            )
+            resp.raise_for_status()
+            html = resp.json().get("html", "")
+    except httpx.HTTPStatusError as exc:
+        status_code = exc.response.status_code
+        if 500 <= status_code < 600:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Upstream service unavailable",
+            ) from exc
+        raise HTTPException(
+            status_code=status_code, detail="Upstream request was rejected"
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Upstream service unavailable",
+        ) from exc
     soup = BeautifulSoup(html, "html.parser")
     suggestions = []
     for item in soup.select(".nav-item"):

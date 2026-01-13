@@ -82,16 +82,16 @@ async def episode_servers(animeEpisodeId: str = Query(...)) -> dict[str, Any]:
         if 500 <= status_code < 600:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Upstream episode service failed",
+                detail="Upstream service unavailable",
             ) from exc
         raise HTTPException(
             status_code=status_code,
-            detail="Upstream episode request was rejected",
+            detail="Upstream request was rejected",
         ) from exc
     except httpx.HTTPError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to reach upstream episode service",
+            detail="Upstream service unavailable",
         ) from exc
 
     _, parsed = await _parse_server_html(html, "sub", preferred=None)
@@ -142,21 +142,22 @@ async def episode_sources(
                 f"{SRC_BASE_URL}/watch/{episode_id.split('?')[0]}",
                 headers={"Referer": SRC_BASE_URL},
             )
+            watch_page.raise_for_status()
     except httpx.HTTPStatusError as exc:
         status_code = exc.response.status_code
         if 500 <= status_code < 600:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Upstream episode service failed",
+                detail="Upstream service unavailable",
             ) from exc
         raise HTTPException(
             status_code=status_code,
-            detail="Upstream episode request was rejected",
+            detail="Upstream request was rejected",
         ) from exc
     except httpx.HTTPError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to reach upstream episode service",
+            detail="Upstream service unavailable",
         ) from exc
 
     ids = parse_sync_ids(watch_page.text)
