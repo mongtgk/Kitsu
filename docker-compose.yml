@@ -8,11 +8,22 @@ services:
       - SECRET_KEY=${SECRET_KEY:-please-set-secret-key}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
       - DEBUG=${DEBUG:-false}
-      - PORT=${PORT:-8000}
+      - PORT=${BACKEND_PORT:-8000}
     ports:
-      - "${PORT:-8000}:${PORT:-8000}"
+      - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
     volumes:
       - backend_uploads:/app/uploads/avatars
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://backend:${BACKEND_PORT:-8000}}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
 
   postgres:
     image: postgres:16-alpine

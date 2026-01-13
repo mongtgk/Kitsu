@@ -1,4 +1,4 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios, { AxiosError, AxiosHeaders, InternalAxiosRequestConfig } from "axios";
 import { env } from "next-runtime-env";
 import {
   handleAuthError,
@@ -7,10 +7,19 @@ import {
 } from "./auth-errors";
 import { getAuthStore } from "@/store/auth-store";
 
-const baseURL =
-  env("NEXT_PUBLIC_API_BASE_URL") ||
-  env("NEXT_PUBLIC_API_URL") ||
-  "";
+const envBaseUrl =
+  (env("NEXT_PUBLIC_API_BASE_URL") || env("NEXT_PUBLIC_API_URL") || "").trim();
+
+const fallbackBaseUrl = "http://localhost:8000";
+
+if (!envBaseUrl) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    "NEXT_PUBLIC_API_BASE_URL is not set; falling back to http://localhost:8000",
+  );
+}
+
+const baseURL = envBaseUrl || fallbackBaseUrl;
 
 export const api = axios.create({
   baseURL,
@@ -79,10 +88,13 @@ api.interceptors.response.use(
           refreshToken: newRefreshToken,
         });
 
-        if (!config.headers) {
-          config.headers = {};
-        }
-        config.headers.Authorization = `Bearer ${accessToken}`;
+        const headers =
+          config.headers instanceof AxiosHeaders
+            ? config.headers
+            : new AxiosHeaders(config.headers ?? undefined);
+
+        headers.set("Authorization", `Bearer ${accessToken}`);
+        config.headers = headers;
         return api(config);
       } catch (refreshError) {
         const normalizedError =

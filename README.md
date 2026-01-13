@@ -5,3 +5,30 @@
 - **backend/** — FastAPI (единственный API и бизнес‑логика)
 
 Подробности архитектуры и процессов: [docs/README.md](docs/README.md).
+
+## Запуск локально
+
+- Frontend:  
+  ```
+  cd frontend
+  NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 npm run dev
+  ```
+- Backend (требует PostgreSQL):  
+  ```
+  cd backend
+  DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/kitsu \
+  SECRET_KEY=please-set-secret-key \
+  ALLOWED_ORIGINS=http://localhost:3000 \
+  python -m uvicorn app.main:app
+  ```
+
+## Docker
+
+- Frontend Dockerfile — корень репозитория (`./Dockerfile`, контекст корня).
+- Backend Dockerfile — `./backend/Dockerfile`.
+- Компоновка сервисов:  
+  ```
+  BACKEND_PORT=8000 FRONTEND_PORT=3000 docker compose up --build frontend backend
+  ```
+  Переменная `BACKEND_PORT` используется только для backend, чтобы избежать конфликта с портом фронтенда.
+  Для Render/CI выставляйте корень фронтенда в `/frontend`, бэкенда — в `/backend`.
