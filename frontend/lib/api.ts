@@ -64,8 +64,12 @@ api.interceptors.response.use(
           tokens.access_token || tokens.accessToken || tokens.token;
         const newRefreshToken = tokens.refresh_token || tokens.refreshToken;
 
-        if (!accessToken || !newRefreshToken) {
-          throw new Error("Invalid refresh response");
+        if (!accessToken) {
+          throw new Error("Missing access token in refresh response");
+        }
+
+        if (!newRefreshToken) {
+          throw new Error("Missing refresh token in refresh response");
         }
 
         const currentAuth = authStore.getState().auth;
@@ -81,7 +85,18 @@ api.interceptors.response.use(
         config.headers.Authorization = `Bearer ${accessToken}`;
         return api(config);
       } catch (refreshError) {
-        return handleAuthError(refreshError);
+        const errorForHandling =
+          refreshError instanceof AxiosError
+            ? refreshError
+            : {
+                code: "unauthorized",
+                message:
+                  refreshError instanceof Error
+                    ? refreshError.message
+                    : "Refresh failed",
+                status: 401,
+              };
+        return handleAuthError(errorForHandling);
       }
     }
 

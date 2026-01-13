@@ -57,7 +57,7 @@ async def import_provider(provider: str, payload: dict[str, Any]) -> dict[str, A
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail="Failed to contact upstream service",
                 ) from exc
-            except (ValueError, AttributeError) as exc:
+            except ValueError as exc:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Failed to parse upstream response",
