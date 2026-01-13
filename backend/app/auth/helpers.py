@@ -6,7 +6,7 @@ from typing import Iterable
 from fastapi import Depends, Request
 
 from . import rbac
-from ..dependencies import get_optional_user
+from ..dependencies import get_current_user
 from ..errors import PermissionError
 from ..models.user import User
 
@@ -37,7 +37,7 @@ def _log_deny(request: Request, role: rbac.Role, required: Iterable[rbac.Permiss
 def require_permission(permission: rbac.Permission):
     async def dependency(
         request: Request,
-        user: User | None = Depends(get_optional_user),
+        user: User = Depends(get_current_user),
     ) -> None:
         role = rbac.resolve_role(user)
         permissions = rbac.resolve_permissions(role)
@@ -54,7 +54,7 @@ def require_any_permission(permissions: Iterable[rbac.Permission]):
 
     async def dependency(
         request: Request,
-        user: User | None = Depends(get_optional_user),
+        user: User = Depends(get_current_user),
     ) -> None:
         role = rbac.resolve_role(user)
         current_permissions = rbac.resolve_permissions(role)

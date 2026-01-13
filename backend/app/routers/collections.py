@@ -1,26 +1,18 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth.helpers import require_permission
 from ..dependencies import get_db
 
 router = APIRouter(prefix="/collections", tags=["collections"])
 
 
-@router.get(
-    "/",
-    dependencies=[Depends(require_permission("read:content"))],
-)
+@router.get("/")
 async def list_collections(db: AsyncSession = Depends(get_db)) -> list[dict]:
     # TODO: Replace with collection retrieval.
     return []
 
 
-@router.post(
-    "/",
-    status_code=201,
-    dependencies=[Depends(require_permission("write:content"))],
-)
+@router.post("/", status_code=201)
 async def create_collection(db: AsyncSession = Depends(get_db)) -> dict:
     # TODO: Persist collection to database.
     return {"message": "collection created"}

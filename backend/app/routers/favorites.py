@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..auth.helpers import require_permission
 from ..dependencies import get_current_user, get_db
 from ..models.user import User
 from ..schemas.favorite import FavoriteCreate, FavoriteRead
@@ -32,6 +33,7 @@ async def create_favorite(
     payload: FavoriteCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _=Depends(require_permission("write:content")),
 ) -> FavoriteRead:
     return await add_favorite_use_case(
         db, user_id=current_user.id, anime_id=payload.anime_id
