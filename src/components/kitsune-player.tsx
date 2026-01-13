@@ -84,7 +84,7 @@ function KitsunePlayer({
   const auth = useAuthSelector((state) => state.auth);
   const permissions = usePermissions();
   const canWriteContent = permissions.includes("write:content");
-  const allowProgressSyncRef = useRef<boolean>(!!auth && canWriteContent);
+  const allowProgressSyncRef = useRef<boolean>(false);
   const resetProgressRefs = useCallback(() => {
     bookmarkIdRef.current = null;
     watchedRecordIdRef.current = null;
@@ -92,21 +92,21 @@ function KitsunePlayer({
     hasMetMinWatchTimeRef.current = false;
     initialSeekTimeRef.current = null;
   }, []);
-  const resetIfDisallowed = useCallback(() => {
-    if (!allowProgressSyncRef.current) {
+  const syncProgressPermission = useCallback(() => {
+    const allowed = !!auth && canWriteContent;
+    allowProgressSyncRef.current = allowed;
+    if (!allowed) {
       resetProgressRefs();
-      return true;
     }
-    return false;
-  }, [resetProgressRefs]);
+    return allowed;
+  }, [auth, canWriteContent, resetProgressRefs]);
   const { createOrUpdateBookMark, syncWatchProgress } = useBookMarks({
     populate: false,
   });
 
   useEffect(() => {
-    allowProgressSyncRef.current = !!auth && canWriteContent;
-    if (resetIfDisallowed()) return;
-  }, [auth, canWriteContent, resetIfDisallowed]);
+    syncProgressPermission();
+  }, [syncProgressPermission]);
 
   useEffect(() => {
     setIsAutoSkipEnabled(autoSkip);
@@ -152,7 +152,7 @@ function KitsunePlayer({
     let isMounted = true; // Track mount status for async operations
 
     const fetchBookmarkAndWatchedId = async () => {
-      if (resetIfDisallowed()) {
+      if (!syncProgressPermission()) {
         return;
       }
       const id = await createOrUpdateBookMark(
