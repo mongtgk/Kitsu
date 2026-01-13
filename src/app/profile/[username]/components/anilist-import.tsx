@@ -18,7 +18,11 @@ import { api } from "@/lib/api";
 import useBookMarks from "@/hooks/use-get-bookmark";
 import { Badge } from "@/components/ui/badge";
 
-function AnilistImport() {
+type AnilistImportProps = {
+  disabled?: boolean;
+};
+
+function AnilistImport({ disabled = false }: AnilistImportProps) {
   const getAnilistAnime = useGetAnilistAnimes();
   const [username, setUsername] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
@@ -115,10 +119,14 @@ function AnilistImport() {
 
   return (
     <>
-      <Dialog onOpenChange={handleOpenChange} open={open}>
-        <DialogTrigger onClick={() => setOpen(true)}>
-          <AnilistIcon />
-        </DialogTrigger>
+       <Dialog onOpenChange={handleOpenChange} open={open}>
+         <DialogTrigger
+           onClick={() => !disabled && setOpen(true)}
+           disabled={disabled}
+           aria-disabled={disabled}
+         >
+           <AnilistIcon />
+         </DialogTrigger>
         <DialogContent className="">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -139,12 +147,13 @@ function AnilistImport() {
                   placeholder="Enter Anilist Username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  disabled={disabled || isLoading}
                 />
               </div>
               <DialogFooter>
                 <Button
                   loading={isLoading}
-                  disabled={isLoading}
+                  disabled={isLoading || disabled}
                   size="sm"
                   className="bg-[#e9376b]  hover:bg-[#e9376b] text-white"
                   type="submit"
@@ -180,7 +189,7 @@ function AnilistImport() {
                 )}
                 <Button
                   loading={isLoading}
-                  disabled={isLoading}
+                  disabled={isLoading || disabled}
                   size="sm"
                   className="bg-[#e9376b]  hover:bg-[#e9376b] text-white"
                   type="submit"
