@@ -8,7 +8,7 @@
 | admin | все базовые разрешения + `admin:*` |
 
 - Определение роли: `guest` без пользователя, `user` по умолчанию, `admin` при явном поле `role` либо `is_admin`/`is_superuser`.
-- Матрица принудительного применения — `app/auth/enforcement_matrix.py`; актуальное сопоставление маршрутов и прав фиксируется в `docs/RBAC_CONTRACTS.md`.
+- Базовые роли и права заданы в `app/auth/rbac.py`, матрица принудительного применения — `app/auth/enforcement_matrix.py`; актуальное сопоставление маршрутов и прав фиксируется в `docs/RBAC_CONTRACTS.md`.
 
 ## Где применяется
 - Только backend: зависимости `get_current_role` + `require_enforced_permission` проверяют Bearer-токен и матрицу, при недостаточных правах возвращают 403.
