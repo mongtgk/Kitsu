@@ -31,6 +31,7 @@ from .errors import (
     error_payload,
     resolve_error_code,
 )
+from .api import router as api_router
 from .routers import (
     anime,
     auth,
@@ -130,6 +131,7 @@ routers = [
     favorites.router,
     views.router,
     watch.router,
+    api_router,
 ]
 
 for router in routers:

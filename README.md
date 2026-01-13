@@ -1,5 +1,7 @@
 # Kitsu
 
-Открытый веб‑сервис каталога и воспроизведения аниме на FastAPI (backend) и Next.js (frontend).
+Веб‑сервис каталога и воспроизведения аниме с разделением на:
+- **frontend/** — Next.js (UI, HTTP‑клиент)
+- **backend/** — FastAPI (единственный API и бизнес‑логика)
 
-Полная актуальная документация находится в `/docs`: [docs/README.md](docs/README.md).
+Подробности архитектуры и процессов: [docs/README.md](docs/README.md).

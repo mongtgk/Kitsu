@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/frontend/node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz
@@ -11,10 +12,13 @@
 
 # next.js
 /.next/
+/frontend/.next/
 /out/
+/frontend/out/
 
 # production
 /build
+/frontend/build
 
 # misc
 .DS_Store
@@ -45,7 +49,7 @@ __pycache__/
 backend/uploads/
 
 # PWA service worker (generated)
-public/sw.js
-public/sw.js.map
-public/workbox-*.js
-public/workbox-*.js.map
+/frontend/public/sw.js
+/frontend/public/sw.js.map
+/frontend/public/workbox-*.js
+/frontend/public/workbox-*.js.map

@@ -9,7 +9,7 @@ RUN apt-get update \
     && apt-get install -y gcc libffi-dev build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml README.md alembic.ini ./
+COPY pyproject.toml alembic.ini ./
 COPY app ./app
 COPY alembic ./alembic
 
@@ -18,6 +18,7 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 RUN pip uninstall -y psycopg2 psycopg2-binary || true
 
+ENV PORT=8000
 EXPOSE 8000
 
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]

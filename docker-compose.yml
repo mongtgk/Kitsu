@@ -8,8 +8,9 @@ services:
       - SECRET_KEY=${SECRET_KEY:-please-set-secret-key}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
       - DEBUG=${DEBUG:-false}
+      - PORT=${PORT:-8000}
     ports:
-      - "8000:8000"
+      - "${PORT:-8000}:${PORT:-8000}"
     volumes:
       - backend_uploads:/app/uploads/avatars
 

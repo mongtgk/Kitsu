@@ -1,7 +1,7 @@
 # Frontend (Next.js)
 
 ## Назначение
-Пользовательский интерфейс каталога и плеера. Работает только при доступном FastAPI и HLS‑прокси, читает данные через REST и локальные Next API routes.
+Пользовательский интерфейс каталога и плеера. Работает только при доступном FastAPI и HLS‑прокси, читает данные через REST.
 
 ## Конфигурация
 - `NEXT_PUBLIC_API_BASE_URL` — базовый URL FastAPI (обязателен).
@@ -9,9 +9,9 @@
 - Переменные читаются в рантайме через `next-runtime-env`; отсутствие `NEXT_PUBLIC_API_BASE_URL` делает запросы к API невозможными.
 
 ## Источники данных
-- **FastAPI**: axios‑клиент (`src/lib/api.ts`) добавляет Bearer токен из auth‑стора. Используются маршруты `/auth/*`, `/users/me`, `/favorites`, `/anime`, `/releases`, `/episodes`, `/watch/continue` и `/watch/progress`.
-- **HiAnime (aniwatch) через Next API routes**: поиск (`/api/search`), расписание (`/api/schedule`), домашние списки (`/api/home`), детали аниме и эпизодов (`/api/anime/[id]`, `/api/episode/*`), AniList import (`/api/import/anilist`) для сопоставления с HiAnime.
-- **Прокси потоков**: `NEXT_PUBLIC_PROXY_URL/m3u8-proxy?url=...&referer=...` формируется внутри плеера (`src/components/kitsune-player.tsx`).
+- **FastAPI**: axios‑клиент (`frontend/lib/api.ts`) добавляет Bearer токен из auth‑стора. Используются маршруты `/auth/*`, `/users/me`, `/favorites`, `/anime`, `/releases`, `/episodes`, `/watch/continue` и `/watch/progress`.
+- **HiAnime (aniwatch) через FastAPI proxy**: поиск (`/api/search`), расписание (`/api/schedule`), домашние списки (`/api/home`), детали аниме и эпизодов (`/api/anime/[id]`, `/api/episode/*`), AniList import (`/api/import/anilist`) для сопоставления с HiAnime.
+- **Прокси потоков**: `NEXT_PUBLIC_PROXY_URL/m3u8-proxy?url=...&referer=...` формируется внутри плеера (`frontend/components/kitsune-player.tsx`).
 
 ## Основные потоки UI
 - **Аутентификация**: `login-popover-button` вызывает `/auth/login` и `/auth/register`, сохраняет токены и подгружает `/users/me`. Навбар обновляет сессию через `/auth/refresh` при наличии refresh токена.

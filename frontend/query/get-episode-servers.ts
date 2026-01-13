@@ -1,7 +1,7 @@
 import { queryKeys } from "@/constants/query-keys";
-import axios from "axios";
 import { IEpisodeServers } from "@/types/episodes";
 import { useQuery } from "react-query";
+import { api } from "@/lib/api";
 
 const getEpisodeServers = async (episodeId: string) => {
   const fallback: IEpisodeServers = {
@@ -15,10 +15,10 @@ const getEpisodeServers = async (episodeId: string) => {
   if (!episodeId) return fallback;
 
   try {
-    const res = await axios.get("/api/episode/servers", {
-      params: {
-        animeEpisodeId: decodeURIComponent(episodeId),
-      },
+    const res = await api.get("/api/episode/servers", {
+        params: {
+          animeEpisodeId: decodeURIComponent(episodeId),
+        },
       timeout: 10000,
     });
     return res.data.data as IEpisodeServers;
