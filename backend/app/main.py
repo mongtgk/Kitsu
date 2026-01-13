@@ -110,16 +110,7 @@ app.add_middleware(
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
-    allow_headers=[
-        "Authorization",
-        "Content-Type",
-        "Accept",
-        "Origin",
-        "X-Requested-With",
-        "Cache-Control",
-        "Pragma",
-        "X-CSRF-Token",
-    ],
+    allow_headers=["*"],
 )
 
 app.mount(
