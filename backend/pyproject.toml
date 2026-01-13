@@ -6,7 +6,6 @@ build-backend = "hatchling.build"
 name = "kitsu-backend"
 version = "0.1.0"
 description = "FastAPI backend rewrite for Kitsu"
-readme = "README.md"
 requires-python = ">=3.12"
 
 dependencies = [
@@ -27,8 +26,8 @@ dependencies = [
   "email-validator>=2.2.0,<3.0.0",
 
   # Auth
-  "bcrypt>=4.0.0,<5.0.0",
-  "passlib[bcrypt]>=1.7.4,<2.0.0",
+  "bcrypt==4.0.1",
+  "passlib[bcrypt]==1.7.4",
   "PyJWT>=2.9.0,<3.0.0",
 ]
 
