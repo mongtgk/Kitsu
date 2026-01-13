@@ -24,6 +24,7 @@
 - **Просмотры**: `POST /watch/progress` (write:content) — валидация эпизода, процентов и позиции; `GET /watch/continue` — продолжить просмотр по пользователю.
 - **Collections/Views**: `GET/POST /collections`, `GET/POST /views` — заглушки для будущей реализации.
 - **Статика**: `/media/avatars/<файл>` — отдаётся напрямую FastAPI.
+- **HiAnime proxy**: `/api/health`, `/api/home`, `/api/schedule`, `/api/search`, `/api/anime/*`, `/api/episode/*`, `/api/import/anilist` проксируют к HiAnime (aniwatch) и возвращают данные для плеера и поиска.
 
 ## Use cases и фоновые задачи
 - `POST /favorites` и `DELETE /favorites/{anime_id}` возвращают результат сразу и ставят задачу в `default_job_runner` (ключи `favorite:add:*` и `favorite:remove:*`). Каждая задача открывает новую БД‑сессию и коммитит изменение; при ошибке выполняется rollback.
