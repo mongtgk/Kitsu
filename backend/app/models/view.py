@@ -1,4 +1,5 @@
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy.dialects.postgresql import UUID
 
 from .base import Base
 
@@ -7,8 +8,14 @@ class View(Base):
     __tablename__ = "views"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    episode_id = Column(Integer, ForeignKey("episodes.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    episode_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("episodes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     progress = Column(Integer, nullable=False, default=0)
     last_viewed_at = Column(
         DateTime(timezone=True),
@@ -17,4 +24,3 @@ class View(Base):
         nullable=False,
     )
     device = Column(String(128))
-
