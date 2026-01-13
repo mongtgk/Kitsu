@@ -14,10 +14,12 @@ os.environ.setdefault(
     "DATABASE_URL", "postgresql+asyncpg://user:pass@localhost:5432/db"
 )
 
+from app.auth.enforcement_matrix import ENFORCEMENT_MATRIX
 from app.auth.helpers import require_any_permission, require_permission
 from app.dependencies import get_current_role, get_current_user, get_db
 from app.errors import PermissionError
 from app.routers import favorites, users, watch
+from app.routers.collections import router as collections_router
 
 
 def make_request(path: str = "/favorites") -> Request:
@@ -72,6 +74,13 @@ class DummyUser:
         self.created_at = datetime.now()
 
 
+class DummyFavorite:
+    def __init__(self, anime_id: uuid.UUID) -> None:
+        self.id = uuid.uuid4()
+        self.anime_id = anime_id
+        self.created_at = datetime.now()
+
+
 class DummyProgress:
     def __init__(
         self,
@@ -91,6 +100,11 @@ class DummyProgress:
 
 
 def make_client(role: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    async def fake_add_favorite_use_case(
+        _db: DummySession, user_id: uuid.UUID, anime_id: uuid.UUID
+    ) -> DummyFavorite:
+        return DummyFavorite(anime_id)
+
     async def fake_remove_favorite_use_case(
         _db: DummySession, user_id: uuid.UUID, anime_id: uuid.UUID
     ) -> None:
@@ -106,6 +120,7 @@ def make_client(role: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     ) -> DummyProgress:
         return DummyProgress(anime_id, episode, position_seconds, progress_percent)
 
+    monkeypatch.setattr(favorites, "add_favorite_use_case", fake_add_favorite_use_case)
     monkeypatch.setattr(favorites, "remove_favorite_use_case", fake_remove_favorite_use_case)
     monkeypatch.setattr(watch, "update_progress", fake_update_progress)
 
@@ -113,6 +128,7 @@ def make_client(role: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     app.include_router(favorites.router)
     app.include_router(watch.router)
     app.include_router(users.router)
+    app.include_router(collections_router)
 
     dummy_user = DummyUser()
 
@@ -180,3 +196,19 @@ def test_update_profile_enforced_denies_guest(monkeypatch: pytest.MonkeyPatch) -
     client = make_client("guest", monkeypatch)
     response = client.patch("/users/me", files={})
     assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_enforcement_matrix_scope_locked() -> None:
+    expected_paths = {
+        ("POST", "/favorites"),
+        ("DELETE", "/favorites/{anime_id}"),
+        ("POST", "/watch/progress"),
+        ("PATCH", "/users/me"),
+    }
+    assert set(ENFORCEMENT_MATRIX.keys()) == expected_paths
+
+
+def test_unlisted_endpoint_not_enforced(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = make_client("guest", monkeypatch)
+    response = client.post("/collections")
+    assert response.status_code == status.HTTP_201_CREATED

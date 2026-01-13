@@ -3,6 +3,7 @@
 Each key is a (METHOD, PATH) tuple, and the value is a tuple of permissions
 that satisfy the endpoint's RBAC enforcement.
 """
+from .helpers import require_permission
 from .rbac import Permission
 
 ENFORCEMENT_MATRIX: dict[tuple[str, str], tuple[Permission, ...]] = {
@@ -11,3 +12,12 @@ ENFORCEMENT_MATRIX: dict[tuple[str, str], tuple[Permission, ...]] = {
     ("POST", "/watch/progress"): ("write:content",),
     ("PATCH", "/users/me"): ("write:profile",),
 }
+
+
+def permission_for(method: str, path: str) -> Permission:
+    permissions = ENFORCEMENT_MATRIX[(method, path)]
+    return permissions[0]
+
+
+def require_enforced_permission(method: str, path: str):
+    return require_permission(permission_for(method, path))

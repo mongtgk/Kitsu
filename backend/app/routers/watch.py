@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth.helpers import require_permission
+from ..auth.enforcement_matrix import require_enforced_permission
 from ..dependencies import get_current_user, get_db
 from ..models.user import User
 from ..schemas.watch import WatchProgressRead, WatchProgressUpdate
@@ -15,7 +15,7 @@ async def upsert_progress(
     payload: WatchProgressUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _=Depends(require_permission("write:content")),
+    _=Depends(require_enforced_permission("POST", "/watch/progress")),
 ) -> WatchProgressRead:
     return await update_progress(
         db,
