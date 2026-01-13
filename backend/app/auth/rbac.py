@@ -26,7 +26,10 @@ ROLE_PERMISSIONS: Final[dict[Role, tuple[Permission, ...]]] = {
 def resolve_role(user: User | None) -> Role:
     if user is None:
         return "guest"
-    if getattr(user, "is_admin", False):
+    user_role = getattr(user, "role", None)
+    if user_role in BASE_ROLES:
+        return user_role
+    if getattr(user, "is_admin", False) or getattr(user, "is_superuser", False):
         return "admin"
     return "user"
 
@@ -34,11 +37,3 @@ def resolve_role(user: User | None) -> Role:
 def resolve_permissions(role: Role) -> list[Permission]:
     return list(ROLE_PERMISSIONS.get(role, ()))
 
-
-def get_current_role(user: User | None) -> Role:
-    return resolve_role(user)
-
-
-def get_current_permissions(user: User | None) -> list[Permission]:
-    role = resolve_role(user)
-    return resolve_permissions(role)

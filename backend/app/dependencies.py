@@ -102,7 +102,7 @@ async def get_current_principal(
 async def get_current_role(
     user: User | None = Depends(get_current_principal),
 ) -> rbac.Role:
-    return rbac.get_current_role(user)
+    return rbac.resolve_role(user)
 
 
 async def get_current_permissions(

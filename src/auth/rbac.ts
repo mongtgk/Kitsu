@@ -26,22 +26,22 @@ export const resolveRole = (auth: IAuth | null | undefined): Role => {
   if (!auth?.accessToken) {
     return "guest";
   }
+  const claimedRole = (auth as { role?: Role | string | undefined })?.role;
+  if (claimedRole === "guest" || claimedRole === "user" || claimedRole === "admin") {
+    return claimedRole;
+  }
+  const isAdmin =
+    (auth as { isAdmin?: boolean | undefined }).isAdmin ??
+    (auth as { is_admin?: boolean | undefined }).is_admin ??
+    (auth as { is_superuser?: boolean | undefined }).is_superuser;
+  if (isAdmin) {
+    return "admin";
+  }
   return "user";
 };
 
 export const resolvePermissions = (role: Role): Permission[] => {
   return ROLE_PERMISSIONS[role] ?? [];
-};
-
-export const getCurrentRole = (auth: IAuth | null | undefined): Role => {
-  return resolveRole(auth);
-};
-
-export const getCurrentPermissions = (
-  auth: IAuth | null | undefined,
-): Permission[] => {
-  const role = resolveRole(auth);
-  return resolvePermissions(role);
 };
 
 export const useRole = (): Role => {
