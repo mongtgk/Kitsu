@@ -84,6 +84,13 @@ function KitsunePlayer({
   const permissions = usePermissions();
   const canWriteContent = permissions.includes("write:content");
   const allowProgressSyncRef = useRef<boolean>(!!auth && canWriteContent);
+  const resetProgressRefs = () => {
+    bookmarkIdRef.current = null;
+    watchedRecordIdRef.current = null;
+    watchHistoryIdsRef.current = [];
+    hasMetMinWatchTimeRef.current = false;
+    initialSeekTimeRef.current = null;
+  };
   const { createOrUpdateBookMark, syncWatchProgress } = useBookMarks({
     populate: false,
   });
@@ -91,11 +98,7 @@ function KitsunePlayer({
   useEffect(() => {
     allowProgressSyncRef.current = !!auth && canWriteContent;
     if (!allowProgressSyncRef.current) {
-      bookmarkIdRef.current = null;
-      watchedRecordIdRef.current = null;
-      watchHistoryIdsRef.current = [];
-      hasMetMinWatchTimeRef.current = false;
-      initialSeekTimeRef.current = null;
+      resetProgressRefs();
     }
   }, [auth, canWriteContent]);
 
@@ -144,11 +147,7 @@ function KitsunePlayer({
 
     const fetchBookmarkAndWatchedId = async () => {
       if (!allowProgressSyncRef.current) {
-        bookmarkIdRef.current = null;
-        watchedRecordIdRef.current = null;
-        watchHistoryIdsRef.current = [];
-        hasMetMinWatchTimeRef.current = false;
-        initialSeekTimeRef.current = null;
+        resetProgressRefs();
         return;
       }
       const id = await createOrUpdateBookMark(
