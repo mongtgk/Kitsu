@@ -1,5 +1,3 @@
-import ipaddress
-
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,17 +25,6 @@ REFRESH_TOKEN_IDENTIFIER_LENGTH = 16
 
 def _client_ip(request: Request) -> str:
     client_host = request.client.host if request.client else None
-    if client_host:
-        return client_host
-
-    forwarded_for = request.headers.get("x-real-ip") or request.headers.get(
-        "x-forwarded-for"
-    )
-    if forwarded_for:
-        forwarded_ip = forwarded_for.split(",")[0].strip()
-        if forwarded_ip:
-            return forwarded_ip
-
     return client_host or "unknown-ip"
 
 

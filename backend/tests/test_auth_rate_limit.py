@@ -16,7 +16,10 @@ from app.dependencies import get_db  # noqa: E402
 from app.errors import AppError, AuthError, error_payload  # noqa: E402
 from app.routers.auth import router  # noqa: E402
 from app.use_cases.auth.register_user import AuthTokens  # noqa: E402
-from app.utils.rate_limit import auth_rate_limiter  # noqa: E402
+from app.utils.rate_limit import (  # noqa: E402
+    AUTH_RATE_LIMIT_MAX_ATTEMPTS,
+    auth_rate_limiter,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -73,7 +76,9 @@ def test_login_rate_limit_exceeded(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_login_success_resets_limit(monkeypatch: pytest.MonkeyPatch) -> None:
-    outcomes: Iterable[str] = iter(["fail"] * 2 + ["success"] + ["fail"] * 6)
+    outcomes: Iterable[str] = iter(
+        ["fail"] * 2 + ["success"] + ["fail"] * (AUTH_RATE_LIMIT_MAX_ATTEMPTS + 1)
+    )
 
     async def login_handler(_db, _email, _password):
         result = next(outcomes)
@@ -91,7 +96,7 @@ def test_login_success_resets_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     response = client.post("/auth/login", json=payload)
     assert response.status_code == status.HTTP_200_OK
 
-    for _ in range(5):
+    for _ in range(AUTH_RATE_LIMIT_MAX_ATTEMPTS):
         response = client.post("/auth/login", json=payload)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
