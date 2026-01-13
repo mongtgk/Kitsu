@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useAuthSelector } from "@/store/auth-store";
 import useBookMarks from "@/hooks/use-get-bookmark";
 import Image from "next/image";
+import { usePermissions } from "@/auth/rbac";
 
 const WATCH_PROGRESS_UPDATE_INTERVAL = 10000; // Update every 10 seconds
 const WATCH_PROGRESS_MIN_WATCH_TIME = 10; // Min seconds watched to create record
@@ -80,9 +81,23 @@ function KitsunePlayer({
   const initialSeekTimeRef = useRef<number | null>(null);
 
   const auth = useAuthSelector((state) => state.auth);
+  const permissions = usePermissions();
+  const canWriteContent = permissions.includes("write:content");
+  const allowProgressSyncRef = useRef<boolean>(!!auth && canWriteContent);
   const { createOrUpdateBookMark, syncWatchProgress } = useBookMarks({
     populate: false,
   });
+
+  useEffect(() => {
+    allowProgressSyncRef.current = !!auth && canWriteContent;
+    if (!allowProgressSyncRef.current) {
+      bookmarkIdRef.current = null;
+      watchedRecordIdRef.current = null;
+      watchHistoryIdsRef.current = [];
+      hasMetMinWatchTimeRef.current = false;
+      initialSeekTimeRef.current = null;
+    }
+  }, [auth, canWriteContent]);
 
   useEffect(() => {
     setIsAutoSkipEnabled(autoSkip);
@@ -128,6 +143,14 @@ function KitsunePlayer({
     let isMounted = true; // Track mount status for async operations
 
     const fetchBookmarkAndWatchedId = async () => {
+      if (!allowProgressSyncRef.current) {
+        bookmarkIdRef.current = null;
+        watchedRecordIdRef.current = null;
+        watchHistoryIdsRef.current = [];
+        hasMetMinWatchTimeRef.current = false;
+        initialSeekTimeRef.current = null;
+        return;
+      }
       const id = await createOrUpdateBookMark(
         animeInfo.id,
         animeInfo.title,
@@ -451,6 +474,7 @@ function KitsunePlayer({
     // --- Skip Logic Handler ---
     const handleTimeUpdate = () => {
       const art = artInstanceRef.current;
+      if (!allowProgressSyncRef.current) return;
       if (!art || art.loading.show) return;
 
       const currentTime = art.currentTime;
@@ -629,6 +653,7 @@ function KitsunePlayer({
 
     const handleInteractionUpdate = () => {
       const art = artInstanceRef.current;
+      if (!allowProgressSyncRef.current) return;
       if (!art || !art.duration || art.duration <= 0) return;
       // Only update if min time met or record exists
       if (hasMetMinWatchTimeRef.current || watchedRecordIdRef.current) {
@@ -678,6 +703,7 @@ function KitsunePlayer({
       if (
         art &&
         art.duration > 0 &&
+        allowProgressSyncRef.current &&
         (hasMetMinWatchTimeRef.current || watchedRecordIdRef.current)
       ) {
         console.log("Syncing final progress on unmount.");

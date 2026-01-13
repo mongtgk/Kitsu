@@ -66,6 +66,7 @@ const Page = () => {
   }, [auth, slug]);
 
   const toggleFavorite = async () => {
+    if (!canWriteContent) return;
     if (!auth) {
       toast.error("Please login to manage favorites", {
         style: { background: "red" },
@@ -137,20 +138,18 @@ const Page = () => {
             </h1>
             <div className="flex items-center gap-5">
               <WatchButton />
-              {canWriteContent && (
-                <Button
-                  variant={isFavorite ? "secondary" : "default"}
-                  className="flex items-center gap-2"
-                  onClick={toggleFavorite}
-                  disabled={favoriteLoading}
-                >
-                  <Heart
-                    className="h-4 w-4"
-                    fill={isFavorite ? "currentColor" : "none"}
-                  />
-                  {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-                </Button>
-              )}
+              <Button
+                variant={isFavorite ? "secondary" : "default"}
+                className="flex items-center gap-2"
+                onClick={toggleFavorite}
+                disabled={favoriteLoading || !canWriteContent}
+              >
+                <Heart
+                  className="h-4 w-4"
+                  fill={isFavorite ? "currentColor" : "none"}
+                />
+                {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+              </Button>
             </div>
           </div>
         </div>
