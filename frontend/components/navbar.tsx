@@ -9,7 +9,7 @@ import { Separator } from "./ui/separator";
 
 import { nightTokyo } from "@/utils/fonts";
 import { ROUTES } from "@/constants/routes";
-import React, { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useState } from "react";
 
 import SearchBar from "./search-bar";
 import { MenuIcon, X } from "lucide-react";
@@ -18,8 +18,6 @@ import { Sheet, SheetClose, SheetContent, SheetTrigger } from "./ui/sheet";
 import LoginPopoverButton from "./login-popover-button";
 import { useAuthSelector } from "@/store/auth-store";
 import NavbarAvatar from "./navbar-avatar";
-import { toast } from "sonner";
-import { api } from "@/lib/api";
 
 const menuItems: Array<{ title: string; href?: string }> = [
   // {
@@ -39,54 +37,10 @@ const menuItems: Array<{ title: string; href?: string }> = [
 
 const NavBar = () => {
   const auth = useAuthSelector((state) => state.auth);
-  const setAuth = useAuthSelector((state) => state.setAuth);
   const clearAuth = useAuthSelector((state) => state.clearAuth);
-  const setIsRefreshing = useAuthSelector((state) => state.setIsRefreshing);
   const { y } = useScrollPosition();
   const isHeaderFixed = true;
   const isHeaderSticky = y > 0;
-
-  useEffect(() => {
-    const refreshAuth = async () => {
-      if (!auth?.refreshToken) return;
-      setIsRefreshing(true);
-      try {
-        const { data } = await api.post("/auth/refresh", {
-          refresh_token: auth.refreshToken,
-        });
-
-        const profile = await api.get("/users/me");
-
-        setAuth({
-          id: (profile.data as any)?.id,
-          email: (profile.data as any)?.email,
-          username: (profile.data as any)?.email?.split("@")[0],
-          avatar: "",
-          collectionId: "",
-          collectionName: "",
-          autoSkip: false,
-          accessToken:
-            (data as any).access_token ||
-            (data as any).accessToken ||
-            (data as any).token ||
-            "",
-          refreshToken:
-            (data as any).refresh_token ||
-            (data as any).refreshToken ||
-            "",
-        });
-      } catch (e) {
-        console.error("Auth refresh error:", e);
-        clearAuth();
-        toast.error("Login session expired.", {
-          style: { background: "red" },
-        });
-      } finally {
-        setIsRefreshing(false);
-      }
-    };
-    refreshAuth();
-  }, [auth?.refreshToken]);
 
   return (
     <div

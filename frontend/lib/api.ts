@@ -31,6 +31,52 @@ const refreshClient = axios.create({
   timeout: 10000,
 });
 
+let refreshPromise:
+  | Promise<{ accessToken: string; refreshToken: string }>
+  | null = null;
+
+const refreshTokens = (
+  refreshToken: string,
+  authStore = getAuthStore(),
+) => {
+  if (!refreshPromise) {
+    refreshPromise = refreshClient
+      .post("/auth/refresh", {
+        refresh_token: refreshToken,
+      })
+      .then((refreshResponse) => {
+        const tokens = refreshResponse.data as {
+          access_token?: string;
+          refresh_token?: string;
+        };
+        const accessToken = tokens.access_token;
+        const newRefreshToken = tokens.refresh_token;
+
+        if (!accessToken) {
+          throw new Error("Missing access token in refresh response");
+        }
+
+        if (!newRefreshToken) {
+          throw new Error("Missing refresh token in refresh response");
+        }
+
+        const currentAuth = authStore.getState().auth;
+        authStore.getState().setAuth({
+          ...(currentAuth ?? {}),
+          accessToken,
+          refreshToken: newRefreshToken,
+        });
+
+        return { accessToken, refreshToken: newRefreshToken };
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+};
+
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = getAuthStore().getState().auth?.accessToken;
   if (token) {
@@ -63,30 +109,8 @@ api.interceptors.response.use(
 
       config._retry = true;
       try {
-        const refreshResponse = await refreshClient.post("/auth/refresh", {
-          refresh_token: refreshToken,
-        });
-        const tokens = refreshResponse.data as {
-          access_token?: string;
-          refresh_token?: string;
-        };
-        const accessToken = tokens.access_token;
-        const newRefreshToken = tokens.refresh_token;
-
-        if (!accessToken) {
-          throw new Error("Missing access token in refresh response");
-        }
-
-        if (!newRefreshToken) {
-          throw new Error("Missing refresh token in refresh response");
-        }
-
-        const currentAuth = authStore.getState().auth;
-        authStore.getState().setAuth({
-          ...(currentAuth ?? {}),
-          accessToken,
-          refreshToken: newRefreshToken,
-        });
+        const tokens = await refreshTokens(refreshToken, authStore);
+        const accessToken = tokens.accessToken;
 
         const headers =
           config.headers instanceof AxiosHeaders
