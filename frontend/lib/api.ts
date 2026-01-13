@@ -1,6 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { env } from "next-runtime-env";
-import { handleAuthError, setAuthFailureHandler } from "./auth-errors";
+import {
+  handleAuthError,
+  normalizeApiError,
+  setAuthFailureHandler,
+} from "./auth-errors";
 import { getAuthStore } from "@/store/auth-store";
 
 const baseURL =
@@ -56,13 +60,9 @@ api.interceptors.response.use(
         const tokens = refreshResponse.data as {
           access_token?: string;
           refresh_token?: string;
-          token?: string;
-          accessToken?: string;
-          refreshToken?: string;
         };
-        const accessToken =
-          tokens.access_token || tokens.accessToken || tokens.token;
-        const newRefreshToken = tokens.refresh_token || tokens.refreshToken;
+        const accessToken = tokens.access_token;
+        const newRefreshToken = tokens.refresh_token;
 
         if (!accessToken) {
           throw new Error("Missing access token in refresh response");
@@ -85,18 +85,11 @@ api.interceptors.response.use(
         config.headers.Authorization = `Bearer ${accessToken}`;
         return api(config);
       } catch (refreshError) {
-        const errorForHandling =
+        const normalizedError =
           refreshError instanceof AxiosError
             ? refreshError
-            : {
-                code: "unauthorized",
-                message:
-                  refreshError instanceof Error
-                    ? refreshError.message
-                    : "Refresh failed",
-                status: 401,
-              };
-        return handleAuthError(errorForHandling);
+            : { ...normalizeApiError(refreshError), status: 401 };
+        return handleAuthError(normalizedError);
       }
     }
 
