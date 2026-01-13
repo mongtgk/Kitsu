@@ -6,6 +6,7 @@ import { Input } from "./ui/input";
 import { toast } from "sonner";
 import { useAuthSelector } from "@/store/auth-store";
 import { api } from "@/lib/api";
+import { usePermissions, useRole } from "@/auth/rbac";
 
 type FormData = {
   email: string;
@@ -21,6 +22,8 @@ function LoginPopoverButton() {
     confirm_password: "",
   });
   const [tabValue, setTabValue] = useState<"login" | "signup">("login");
+  const role = useRole();
+  const permissions = usePermissions();
 
   const loginWithEmail = async () => {
     try {
@@ -254,6 +257,14 @@ function LoginPopoverButton() {
             </Button>
           </TabsContent>
         </Tabs>
+        <div className="mt-3 text-xs text-gray-300 space-y-1">
+          <p>
+            Role: <span className="text-red-400 font-semibold">{role}</span>
+          </p>
+          <p className="text-[11px] text-gray-400">
+            Permissions: {permissions.join(", ")}
+          </p>
+        </div>
       </PopoverContent>
     </Popover>
   );
