@@ -79,7 +79,12 @@ api.interceptors.response.use(
       const refreshToken = authStore.getState().auth?.refreshToken;
 
       if (!refreshToken) {
-        throw handleAuthError(error);
+        const terminalAuthError: ApiError = {
+          code: "unauthorized",
+          status: 401,
+          message: "Session expired",
+        };
+        handleAuthError(terminalAuthError);
       }
 
       if (authStore.getState().isRefreshing) {
@@ -91,7 +96,7 @@ api.interceptors.response.use(
             return api(originalRequest);
           })
           .catch((err) => {
-            throw handleAuthError(err);
+            handleAuthError(err);
           });
       }
 
@@ -118,14 +123,19 @@ api.interceptors.response.use(
           if (!newToken) {
             const refreshError: ApiError = {
               code: "unauthorized",
-              message: "No token returned from refresh",
               status: 401,
+              message: "Session expired",
             };
-            throw handleAuthError(refreshError);
+            handleAuthError(refreshError);
           }
           return newToken;
-        } catch (err) {
-          throw handleAuthError(err);
+        } catch {
+          const refreshFailure: ApiError = {
+            code: "unauthorized",
+            status: 401,
+            message: "Session expired",
+          };
+          handleAuthError(refreshFailure);
         } finally {
           setIsRefreshing(false);
           refreshPromise = null;
@@ -138,16 +148,20 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
         }
         return api(originalRequest);
-      } catch (err) {
-        throw handleAuthError(err);
+      } catch {
+        const refreshFailure: ApiError = {
+          code: "unauthorized",
+          status: 401,
+          message: "Session expired",
+        };
+        handleAuthError(refreshFailure);
       }
     }
 
-    const normalizedError = normalizeApiError(error);
-    if (normalizedError.status === 401) {
-      throw handleAuthError(error);
+    if (error.response?.status === 401) {
+      handleAuthError(error);
     }
-    return Promise.reject(normalizedError);
+    throw normalizeApiError(error);
   },
 );
 

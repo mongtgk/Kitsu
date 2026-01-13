@@ -83,9 +83,6 @@ export const normalizeApiError = (error: unknown): ApiError => {
   };
 };
 
-// Tracks error objects that already triggered auth handling to avoid duplicate redirects
-const handledAuthFailures = new WeakSet<object>();
-
 const authFailureHandlers = new Set<(redirectTo: string) => void>();
 
 export const setAuthFailureHandler = (handler: (redirectTo: string) => void) => {
@@ -95,15 +92,6 @@ export const setAuthFailureHandler = (handler: (redirectTo: string) => void) => 
   };
 };
 
-const isAuthFailureHandled = (error: unknown) =>
-  error && typeof error === "object" && handledAuthFailures.has(error as object);
-
-const trackAuthFailureError = (error: unknown) => {
-  if (error && typeof error === "object") {
-    handledAuthFailures.add(error as object);
-  }
-};
-
 const navigateHome = () => {
   if (typeof window === "undefined" || window.location.pathname === ROUTES.HOME) {
     return;
@@ -111,23 +99,19 @@ const navigateHome = () => {
   window.location.replace(ROUTES.HOME);
 };
 
-let isHandlingAuthFailure = false;
+let authFailureHandled = false;
 
 const handleAuthFailure = () => {
-  if (isHandlingAuthFailure) {
+  if (authFailureHandled) {
     return;
   }
-  isHandlingAuthFailure = true;
-  try {
-    getAuthStore().getState().clearAuth();
-    if (authFailureHandlers.size > 0) {
-      authFailureHandlers.forEach((handler) => handler(ROUTES.HOME));
-      return;
-    }
-    navigateHome();
-  } finally {
-    isHandlingAuthFailure = false;
+  authFailureHandled = true;
+  getAuthStore().getState().clearAuth();
+  if (authFailureHandlers.size > 0) {
+    authFailureHandlers.forEach((handler) => handler(ROUTES.HOME));
+    return;
   }
+  navigateHome();
 };
 
 // Always throws a normalized auth error; logout decisions are centralized here.
@@ -135,10 +119,7 @@ export const handleAuthError = (error: unknown): never => {
   const normalizedError = normalizeApiError(error);
 
   if (normalizedError.status === 401) {
-    if (!isAuthFailureHandled(error)) {
-      trackAuthFailureError(error);
-      handleAuthFailure();
-    }
+    handleAuthFailure();
     throw normalizedError;
   }
 
