@@ -30,8 +30,8 @@ def test_cors_preflight_options_auth_login() -> None:
         },
     )
     
-    # Should return 200 OK for OPTIONS preflight
-    assert response.status_code == status.HTTP_200_OK
+    # Should return 204 No Content for OPTIONS preflight
+    assert response.status_code == status.HTTP_204_NO_CONTENT
     
     # Check CORS headers are present
     assert "access-control-allow-origin" in response.headers
@@ -55,8 +55,8 @@ def test_cors_preflight_options_auth_register() -> None:
         },
     )
     
-    # Should return 200 OK for OPTIONS preflight
-    assert response.status_code == status.HTTP_200_OK
+    # Should return 204 No Content for OPTIONS preflight
+    assert response.status_code == status.HTTP_204_NO_CONTENT
     
     # Check CORS headers are present
     assert "access-control-allow-origin" in response.headers
@@ -72,3 +72,73 @@ async def test_httpx_client_follows_redirects() -> None:
     assert client.follow_redirects is True
     
     await client.aclose()
+
+
+def test_cors_preflight_with_disallowed_origin() -> None:
+    """Test that OPTIONS preflight with disallowed origin returns 204 without CORS headers."""
+    client = TestClient(app)
+    
+    response = client.options(
+        "/auth/login",
+        headers={
+            "Origin": "http://evil.com",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    
+    # Should still return 204 (graceful handling)
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    
+    # Should NOT include Access-Control-Allow-Origin header for disallowed origin
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_cors_preflight_with_trailing_slash() -> None:
+    """Test that OPTIONS preflight with origin containing trailing slash is handled gracefully."""
+    client = TestClient(app)
+    
+    response = client.options(
+        "/auth/login",
+        headers={
+            "Origin": "http://localhost:3000/",  # Trailing slash
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    
+    # Should return 204 (doesn't match allowed origin exactly)
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    
+    # Should NOT include CORS headers since origin doesn't match exactly
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_cors_preflight_auth_refresh() -> None:
+    """Test that OPTIONS preflight request to /auth/refresh works correctly."""
+    client = TestClient(app)
+    
+    response = client.options(
+        "/auth/refresh",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def test_cors_preflight_auth_logout() -> None:
+    """Test that OPTIONS preflight request to /auth/logout works correctly."""
+    client = TestClient(app)
+    
+    response = client.options(
+        "/auth/logout",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"

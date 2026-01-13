@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.exc import (
     IntegrityError,
     MultipleResultsFound,
@@ -105,6 +106,32 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=lifespan)
 
+
+class OptionsPreflightMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to handle OPTIONS preflight requests before they reach CORSMiddleware.
+    This prevents 400 errors for disallowed origins by returning 204 for all OPTIONS requests.
+    Allowed origins still get proper CORS headers from this middleware.
+    """
+    async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            origin = request.headers.get("origin")
+            response = Response(status_code=status.HTTP_204_NO_CONTENT)
+            
+            # Add CORS headers for allowed origins
+            if origin and origin in settings.allowed_origins:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+                response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
+                response.headers["Access-Control-Allow-Headers"] = "*"
+                response.headers["Access-Control-Max-Age"] = "600"
+            
+            return response
+        
+        return await call_next(request)
+
+
+# Add CORSMiddleware first (runs last), then OptionsPreflightMiddleware (runs first)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
@@ -112,6 +139,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
 )
+
+app.add_middleware(OptionsPreflightMiddleware)
 
 app.mount(
     "/media/avatars",

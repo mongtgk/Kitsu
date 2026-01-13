@@ -10,6 +10,7 @@
 - Обязательные переменные: `SECRET_KEY`, `DATABASE_URL=postgresql+asyncpg://...`.
   - Альтернатива для docker-compose: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`.
 - Дополнительно: `ACCESS_TOKEN_EXPIRE_MINUTES` (30 по умолчанию), `REFRESH_TOKEN_EXPIRE_DAYS` (14), `ALGORITHM` (HS256), `ALLOWED_ORIGINS` (CORS, список), `DEBUG`, пул БД (`DB_POOL_SIZE`, `DB_MAX_OVERFLOW`, `DB_POOL_RECYCLE`, `DB_POOL_PRE_PING`).
+  - **ВАЖНО для `ALLOWED_ORIGINS`**: Указывайте origins БЕЗ завершающего слеша. Например: `https://frontend-79rs.onrender.com` (правильно), а не `https://frontend-79rs.onrender.com/` (неправильно).
 - На старте выполняются Alembic‑миграции и проверка доступности БД; при ошибке приложение не поднимается. `/health` возвращает 200 при успешном подключении к БД, 503 иначе.
 
 ## API (текущее состояние)

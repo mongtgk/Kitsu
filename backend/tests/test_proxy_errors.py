@@ -7,7 +7,7 @@ import pytest
 
 # Ensure required environment variables are present for module imports.
 os.environ.setdefault("SECRET_KEY", "test")
-os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost")
+os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:3000")
 os.environ.setdefault(
     "DATABASE_URL", "postgresql+asyncpg://user:pass@localhost:5432/db"
 )
