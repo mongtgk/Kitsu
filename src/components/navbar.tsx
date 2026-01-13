@@ -20,6 +20,7 @@ import { useAuthSelector } from "@/store/auth-store";
 import NavbarAvatar from "./navbar-avatar";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { useRole } from "@/auth/rbac";
 
 const menuItems: Array<{ title: string; href?: string }> = [
   // {
@@ -42,6 +43,7 @@ const NavBar = () => {
   const setAuth = useAuthSelector((state) => state.setAuth);
   const clearAuth = useAuthSelector((state) => state.clearAuth);
   const setIsRefreshing = useAuthSelector((state) => state.setIsRefreshing);
+  const role = useRole();
   const { y } = useScrollPosition();
   const isHeaderFixed = true;
   const isHeaderSticky = y > 0;
@@ -130,6 +132,7 @@ const NavBar = () => {
         </div>
         <div className="w-1/3 hidden lg:flex items-center gap-5">
           <SearchBar />
+          <span className="text-xs text-slate-200">Role: {role}</span>
           {auth ? (
             <NavbarAvatar auth={auth} clearAuth={clearAuth} />
           ) : (
