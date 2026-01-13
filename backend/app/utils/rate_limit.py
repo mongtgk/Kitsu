@@ -1,0 +1,44 @@
+import time
+from collections import defaultdict
+from typing import DefaultDict, List
+
+
+class SoftRateLimiter:
+    def __init__(self, max_attempts: int, window_seconds: int) -> None:
+        self.max_attempts = max_attempts
+        self.window_seconds = window_seconds
+        self._attempts: DefaultDict[str, List[float]] = defaultdict(list)
+
+    def _prune(self, key: str, now: float) -> List[float]:
+        cutoff = now - self.window_seconds
+        attempts = [ts for ts in self._attempts.get(key, []) if ts >= cutoff]
+        if attempts:
+            self._attempts[key] = attempts
+        else:
+            self._attempts.pop(key, None)
+        return attempts
+
+    def is_limited(self, key: str, now: float | None = None) -> bool:
+        current = now or time.time()
+        attempts = self._prune(key, current)
+        return len(attempts) >= self.max_attempts
+
+    def record_failure(self, key: str, now: float | None = None) -> None:
+        current = now or time.time()
+        attempts = self._prune(key, current)
+        attempts.append(current)
+        self._attempts[key] = attempts
+
+    def reset(self, key: str) -> None:
+        self._attempts.pop(key, None)
+
+    def clear(self) -> None:
+        self._attempts.clear()
+
+
+def make_key(scope: str, ip: str, identifier: str | None = None) -> str:
+    safe_identifier = identifier or "unknown"
+    return f"{scope}:{ip or 'unknown'}:{safe_identifier}"
+
+
+auth_rate_limiter = SoftRateLimiter(max_attempts=5, window_seconds=60)
