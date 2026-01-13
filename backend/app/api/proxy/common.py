@@ -17,7 +17,7 @@ DEFAULT_HEADERS = {
 
 
 async def get_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(timeout=10.0, headers=DEFAULT_HEADERS)
+    return httpx.AsyncClient(timeout=10.0, headers=DEFAULT_HEADERS, follow_redirects=True)
 
 
 def parse_sync_ids(html: str) -> dict[str, Optional[int]]:
