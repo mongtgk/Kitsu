@@ -47,6 +47,7 @@ def test_require_permission_denies_and_logs(caplog: pytest.LogCaptureFixture) ->
     assert PermissionError.message in exc.value.detail
     assert any("write:profile" in record.getMessage() for record in caplog.records)
     assert any("/favorites" in record.getMessage() for record in caplog.records)
+    assert any("GET" in record.getMessage() for record in caplog.records)
 
 
 def test_require_any_permission_allows_when_one_matches() -> None:
@@ -158,6 +159,23 @@ def test_delete_favorite_enforced_denies_guest(monkeypatch: pytest.MonkeyPatch) 
     client = make_client("guest", monkeypatch)
     response = client.delete(f"/favorites/{uuid.uuid4()}")
     assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json()["detail"] == PermissionError.message
+
+
+def test_create_favorite_enforced_allows_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = make_client("user", monkeypatch)
+    payload = {"anime_id": str(uuid.uuid4())}
+    response = client.post("/favorites/", json=payload)
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json()["anime_id"] == payload["anime_id"]
+
+
+def test_create_favorite_enforced_denies_guest(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = make_client("guest", monkeypatch)
+    payload = {"anime_id": str(uuid.uuid4())}
+    response = client.post("/favorites/", json=payload)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json()["detail"] == PermissionError.message
 
 
 def test_watch_progress_enforced_allows_user(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -183,6 +201,7 @@ def test_watch_progress_enforced_denies_guest(monkeypatch: pytest.MonkeyPatch) -
     }
     response = client.post("/watch/progress", json=payload)
     assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json()["detail"] == PermissionError.message
 
 
 def test_update_profile_enforced_allows_user(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -196,6 +215,7 @@ def test_update_profile_enforced_denies_guest(monkeypatch: pytest.MonkeyPatch) -
     client = make_client("guest", monkeypatch)
     response = client.patch("/users/me", files={})
     assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json()["detail"] == PermissionError.message
 
 
 def test_enforcement_matrix_scope_locked() -> None:
