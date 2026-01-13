@@ -82,6 +82,27 @@ def upgrade() -> None:
 def downgrade() -> None:
     inspector = sa.inspect(op.get_bind())
 
+    if inspector.has_table("collections"):
+        op.drop_constraint(
+            op.f("fk_collections_user_id_users"), "collections", type_="foreignkey"
+        )
+        op.alter_column(
+            "collections",
+            "user_id",
+            existing_type=postgresql.UUID(as_uuid=True),
+            type_=sa.Integer(),
+            nullable=False,
+            postgresql_using="user_id::integer",
+        )
+        op.create_foreign_key(
+            op.f("fk_collections_user_id_users"),
+            "collections",
+            "users",
+            ["user_id"],
+            ["id"],
+            ondelete="CASCADE",
+        )
+
     if inspector.has_table("views"):
         op.drop_constraint(
             op.f("fk_views_episode_id_episodes"), "views", type_="foreignkey"
@@ -114,27 +135,6 @@ def downgrade() -> None:
         op.create_foreign_key(
             op.f("fk_views_user_id_users"),
             "views",
-            "users",
-            ["user_id"],
-            ["id"],
-            ondelete="CASCADE",
-        )
-
-    if inspector.has_table("collections"):
-        op.drop_constraint(
-            op.f("fk_collections_user_id_users"), "collections", type_="foreignkey"
-        )
-        op.alter_column(
-            "collections",
-            "user_id",
-            existing_type=postgresql.UUID(as_uuid=True),
-            type_=sa.Integer(),
-            nullable=False,
-            postgresql_using="user_id::integer",
-        )
-        op.create_foreign_key(
-            op.f("fk_collections_user_id_users"),
-            "collections",
             "users",
             ["user_id"],
             ["id"],
