@@ -50,7 +50,6 @@ api.interceptors.response.use(
 
       config._retry = true;
       try {
-        authStore.getState().setIsRefreshing(true);
         const refreshResponse = await refreshClient.post("/auth/refresh", {
           refresh_token: refreshToken,
         });
@@ -83,8 +82,6 @@ api.interceptors.response.use(
         return api(config);
       } catch (refreshError) {
         return handleAuthError(refreshError);
-      } finally {
-        authStore.getState().setIsRefreshing(false);
       }
     }
 

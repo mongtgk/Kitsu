@@ -39,7 +39,10 @@ async def schedule(date: Optional[str] = Query(None)) -> dict[str, Any]:
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Upstream schedule service failed",
             ) from exc
-        raise HTTPException(status_code=status_code, detail=exc.response.text) from exc
+        raise HTTPException(
+            status_code=status_code,
+            detail="Upstream schedule request was rejected",
+        ) from exc
     except httpx.HTTPError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

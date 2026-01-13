@@ -84,7 +84,10 @@ async def episode_servers(animeEpisodeId: str = Query(...)) -> dict[str, Any]:
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Upstream episode service failed",
             ) from exc
-        raise HTTPException(status_code=status_code, detail=exc.response.text) from exc
+        raise HTTPException(
+            status_code=status_code,
+            detail="Upstream episode request was rejected",
+        ) from exc
     except httpx.HTTPError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -146,7 +149,10 @@ async def episode_sources(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Upstream episode service failed",
             ) from exc
-        raise HTTPException(status_code=status_code, detail=exc.response.text) from exc
+        raise HTTPException(
+            status_code=status_code,
+            detail="Upstream episode request was rejected",
+        ) from exc
     except httpx.HTTPError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

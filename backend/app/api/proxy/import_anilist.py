@@ -50,7 +50,7 @@ async def import_provider(provider: str, payload: dict[str, Any]) -> dict[str, A
                     ) from exc
                 raise HTTPException(
                     status_code=upstream_status,
-                    detail=exc.response.text,
+                    detail="Upstream request was rejected",
                 ) from exc
             except httpx.HTTPError as exc:
                 raise HTTPException(
