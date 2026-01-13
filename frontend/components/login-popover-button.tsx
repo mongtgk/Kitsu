@@ -45,14 +45,33 @@ function LoginPopoverButton() {
           (data as any).refresh_token || (data as any).refreshToken,
       };
 
+      const accessToken = tokens.accessToken || "";
+      const refreshToken = tokens.refreshToken || "";
+
+      if (accessToken) {
+        setAuth({
+          id: undefined,
+          email: formData.email,
+          username: formData.email?.split("@")[0],
+          avatar: "",
+          collectionId: "",
+          collectionName: "",
+          autoSkip: false,
+          accessToken,
+          refreshToken,
+        });
+      }
+
       let userEmail = formData.email;
       let userId: string | undefined;
-      try {
-        const profile = await api.get("/users/me");
-        userEmail = (profile.data as any)?.email || userEmail;
-        userId = (profile.data as any)?.id;
-      } catch {
-        // ignore profile errors and fallback to form values
+      if (accessToken) {
+        try {
+          const profile = await api.get("/users/me");
+          userEmail = (profile.data as any)?.email || userEmail;
+          userId = (profile.data as any)?.id;
+        } catch {
+          // ignore profile errors and fallback to form values
+        }
       }
 
       toast.success("Login successful", { style: { background: "green" } });
@@ -65,8 +84,8 @@ function LoginPopoverButton() {
         collectionId: "",
         collectionName: "",
         autoSkip: false,
-        accessToken: tokens.accessToken || "",
-        refreshToken: tokens.refreshToken || "",
+        accessToken,
+        refreshToken,
       });
     } catch (e) {
       console.error("Login error:", e);
@@ -109,17 +128,36 @@ function LoginPopoverButton() {
           (data as any).refresh_token || (data as any).refreshToken,
       };
 
-      let userEmail = formData.email;
-      let userId: string | undefined;
-      try {
-        const profile = await api.get("/users/me");
-        userEmail = (profile.data as any)?.email || userEmail;
-        userId = (profile.data as any)?.id;
-      } catch {
-        // ignore profile errors and fallback
+      const accessToken = tokens.accessToken || "";
+      const refreshToken = tokens.refreshToken || "";
+
+      if (accessToken) {
+        setAuth({
+          id: undefined,
+          email: formData.email,
+          username: formData.email?.split("@")[0],
+          avatar: "",
+          collectionId: "",
+          collectionName: "",
+          autoSkip: false,
+          accessToken,
+          refreshToken,
+        });
       }
 
-       setAuth({
+      let userEmail = formData.email;
+      let userId: string | undefined;
+      if (accessToken) {
+        try {
+          const profile = await api.get("/users/me");
+          userEmail = (profile.data as any)?.email || userEmail;
+          userId = (profile.data as any)?.id;
+        } catch {
+          // ignore profile errors and fallback
+        }
+      }
+
+      setAuth({
         id: userId,
         email: userEmail,
         username: userEmail?.split("@")[0],
@@ -127,8 +165,8 @@ function LoginPopoverButton() {
         collectionId: "",
         collectionName: "",
         autoSkip: false,
-        accessToken: tokens.accessToken || "",
-        refreshToken: tokens.refreshToken || "",
+        accessToken,
+        refreshToken,
       });
       clearForm();
       setTabValue("login");

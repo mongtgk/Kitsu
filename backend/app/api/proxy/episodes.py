@@ -1,5 +1,6 @@
 from typing import Any, Optional
 
+import httpx
 from bs4 import BeautifulSoup
 from fastapi import APIRouter, HTTPException, Query, status
 
@@ -64,17 +65,31 @@ async def episode_servers(animeEpisodeId: str = Query(...)) -> dict[str, Any]:
     if "?ep=" not in episode_id:
         episode_id = f"{episode_id}?ep={episode_id.split('-')[-1]}"
     ep_key = episode_id.split("?ep=")[1]
-    async with await get_client() as client:
-        resp = await client.get(
-            f"{SRC_AJAX_URL}/v2/episode/servers",
-            params={"episodeId": ep_key},
-            headers={
-                "X-Requested-With": "XMLHttpRequest",
-                "Referer": f"{SRC_BASE_URL}/watch/{episode_id}",
-            },
-        )
-        resp.raise_for_status()
-        html = resp.json().get("html", "")
+    try:
+        async with await get_client() as client:
+            resp = await client.get(
+                f"{SRC_AJAX_URL}/v2/episode/servers",
+                params={"episodeId": ep_key},
+                headers={
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": f"{SRC_BASE_URL}/watch/{episode_id}",
+                },
+            )
+            resp.raise_for_status()
+            html = resp.json().get("html", "")
+    except httpx.HTTPStatusError as exc:
+        status_code = exc.response.status_code
+        if 500 <= status_code < 600:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Upstream episode service failed",
+            ) from exc
+        raise HTTPException(status_code=status_code, detail=exc.response.text) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to reach upstream episode service",
+        ) from exc
 
     _, parsed = await _parse_server_html(html, "sub", preferred=None)
     parsed["episodeId"] = episode_id
@@ -92,37 +107,51 @@ async def episode_sources(
         episode_id = f"{episode_id}?ep={episode_id.split('-')[-1]}"
     ep_key = episode_id.split("?ep=")[1]
 
-    async with await get_client() as client:
-        servers_resp = await client.get(
-            f"{SRC_AJAX_URL}/v2/episode/servers",
-            params={"episodeId": ep_key},
-            headers={
-                "X-Requested-With": "XMLHttpRequest",
-                "Referer": f"{SRC_BASE_URL}/watch/{episode_id}",
-            },
-        )
-        servers_resp.raise_for_status()
-        servers_html = servers_resp.json().get("html", "")
-
-        server_id, parsed_servers = await _parse_server_html(
-            servers_html, category or "sub", preferred=server
-        )
-        if not server_id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No server found for requested episode",
+    try:
+        async with await get_client() as client:
+            servers_resp = await client.get(
+                f"{SRC_AJAX_URL}/v2/episode/servers",
+                params={"episodeId": ep_key},
+                headers={
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": f"{SRC_BASE_URL}/watch/{episode_id}",
+                },
             )
-        source_resp = await client.get(
-            f"{SRC_AJAX_URL}/v2/episode/sources",
-            params={"id": server_id},
-        )
-        source_resp.raise_for_status()
-        source_link = source_resp.json().get("link")
+            servers_resp.raise_for_status()
+            servers_html = servers_resp.json().get("html", "")
 
-        watch_page = await client.get(
-            f"{SRC_BASE_URL}/watch/{episode_id.split('?')[0]}",
-            headers={"Referer": SRC_BASE_URL},
-        )
+            server_id, parsed_servers = await _parse_server_html(
+                servers_html, category or "sub", preferred=server
+            )
+            if not server_id:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No server found for requested episode",
+                )
+            source_resp = await client.get(
+                f"{SRC_AJAX_URL}/v2/episode/sources",
+                params={"id": server_id},
+            )
+            source_resp.raise_for_status()
+            source_link = source_resp.json().get("link")
+
+            watch_page = await client.get(
+                f"{SRC_BASE_URL}/watch/{episode_id.split('?')[0]}",
+                headers={"Referer": SRC_BASE_URL},
+            )
+    except httpx.HTTPStatusError as exc:
+        status_code = exc.response.status_code
+        if 500 <= status_code < 600:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Upstream episode service failed",
+            ) from exc
+        raise HTTPException(status_code=status_code, detail=exc.response.text) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to reach upstream episode service",
+        ) from exc
 
     ids = parse_sync_ids(watch_page.text)
     payload = {
