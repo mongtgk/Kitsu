@@ -24,14 +24,21 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
 };
 
+const isRole = (value: unknown): value is Role =>
+  typeof value === "string" && value in ROLE_PERMISSIONS;
+
 export const resolveRole = (auth: IAuth | null): Role => {
-  if (!auth?.accessToken) return "guest";
+  const explicitRole = (auth as { role?: Role | string } | null)?.role;
+  if (isRole(explicitRole)) {
+    return explicitRole;
+  }
+  if (!auth) return "guest";
   return "user";
 };
 
-export const resolvePermissions = (role: Role): Permission[] => [
-  ...(ROLE_PERMISSIONS[role] ?? []),
-];
+export const resolvePermissions = (role: Role): Permission[] => {
+  return [...ROLE_PERMISSIONS[role]];
+};
 
 export const useRole = () => {
   const auth = useAuthSelector((state) => state.auth);

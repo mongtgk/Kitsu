@@ -29,7 +29,10 @@ async def get_current_user_optional(
     if credentials is None or credentials.scheme.lower() != "bearer":
         return None
 
-    return await get_current_user(credentials, db)
+    try:
+        return await get_current_user(credentials, db)
+    except HTTPException:
+        return None
 
 
 async def get_current_user(

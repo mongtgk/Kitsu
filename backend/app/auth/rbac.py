@@ -47,8 +47,10 @@ def resolve_role(user: User | None) -> Role:
     if user is None:
         return ROLE_GUEST
 
-    if getattr(user, "is_active", False) and getattr(user, "is_admin", False):
-        return ROLE_ADMIN
+    role = getattr(user, "role", None)
+    # Optional explicit role attribute supports future extensibility without enforcement.
+    if isinstance(role, str) and role in ROLE_PERMISSIONS:
+        return role
 
     return ROLE_USER
 

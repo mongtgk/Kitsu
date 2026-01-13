@@ -257,14 +257,24 @@ function LoginPopoverButton() {
             </Button>
           </TabsContent>
         </Tabs>
-        <div className="mt-3 text-xs text-gray-300 space-y-1">
-          <p>
-            Role: <span className="text-red-400 font-semibold">{role}</span>
+        {role === "guest" ? (
+          <p className="mt-3 text-xs text-gray-400" aria-live="polite">
+            You are browsing as a guest. Sign in to see your assigned role and
+            permissions.
           </p>
-          <p className="text-[11px] text-gray-400">
-            Permissions: {permissions.join(", ")}
-          </p>
-        </div>
+        ) : (
+          <dl
+            className="mt-3 text-xs text-gray-300 space-y-1"
+            aria-label="Current access context"
+          >
+            <dt className="text-gray-400">Role</dt>
+            <dd className="text-red-400 font-semibold">{role}</dd>
+            <dt className="text-gray-400">Permissions</dt>
+            <dd className="text-[11px] text-gray-400">
+              {permissions.join(", ")}
+            </dd>
+          </dl>
+        )}
       </PopoverContent>
     </Popover>
   );
