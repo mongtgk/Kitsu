@@ -15,6 +15,7 @@ class SoftRateLimiter:
         self._attempts: DefaultDict[str, List[float]] = defaultdict(list)
 
     def _prune(self, key: str, now: float) -> List[float]:
+        """Remove expired attempts for the given key in-place."""
         cutoff = now - self.window_seconds
         attempts = [ts for ts in self._attempts.get(key, []) if ts >= cutoff]
         if attempts:
@@ -44,12 +45,13 @@ class SoftRateLimiter:
 def make_key(scope: str, ip: str, identifier: str) -> str:
     if not identifier:
         raise ValueError("identifier is required for rate limiting")
+    identifier_hash = hashlib.sha256(identifier.encode()).hexdigest()
+    identifier_component = identifier_hash[:32]
     if ip:
         ip_component = ip
     else:
-        hashed_identifier = hashlib.sha256(identifier.encode()).hexdigest()[:8]
-        ip_component = f"unknown-ip-{hashed_identifier}"
-    return f"{scope}:{ip_component}:{identifier}"
+        ip_component = f"unknown-ip-{identifier_hash[:8]}"
+    return f"{scope}:{ip_component}:{identifier_component}"
 
 
 auth_rate_limiter = SoftRateLimiter(

@@ -28,12 +28,7 @@ REFRESH_TOKEN_IDENTIFIER_LENGTH = 16
 def _client_ip(request: Request) -> str:
     client_host = request.client.host if request.client else None
     if client_host:
-        try:
-            parsed = ipaddress.ip_address(client_host)
-            if not parsed.is_private and not parsed.is_loopback:
-                return client_host
-        except ValueError:
-            return client_host
+        return client_host
 
     forwarded_for = request.headers.get("x-real-ip") or request.headers.get(
         "x-forwarded-for"

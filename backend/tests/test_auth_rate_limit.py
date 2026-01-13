@@ -73,19 +73,7 @@ def test_login_rate_limit_exceeded(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_login_success_resets_limit(monkeypatch: pytest.MonkeyPatch) -> None:
-    outcomes: Iterable[str] = iter(
-        [
-            "fail",
-            "fail",
-            "success",
-            "fail",
-            "fail",
-            "fail",
-            "fail",
-            "fail",
-            "fail",
-        ]
-    )
+    outcomes: Iterable[str] = iter(["fail"] * 2 + ["success"] + ["fail"] * 6)
 
     async def login_handler(_db, _email, _password):
         result = next(outcomes)
