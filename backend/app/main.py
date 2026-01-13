@@ -17,6 +17,7 @@ from sqlalchemy.exc import (
     SQLAlchemyError,
 )
 
+from .background import default_job_runner
 from .config import settings
 from .database import engine
 from .errors import (
@@ -99,6 +100,8 @@ async def lifespan(app: FastAPI):
         )
 
     yield
+
+    await default_job_runner.stop()
 
 
 app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=lifespan)

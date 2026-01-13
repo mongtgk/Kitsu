@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,14 +24,22 @@ async def create_watch_progress(
     episode: int,
     position_seconds: int | None,
     progress_percent: float | None,
+    progress_id: uuid.UUID | None = None,
+    created_at: datetime | None = None,
+    last_watched_at: datetime | None = None,
 ) -> WatchProgress:
     progress = WatchProgress(
+        id=progress_id or uuid.uuid4(),
         user_id=user_id,
         anime_id=anime_id,
         episode=episode,
         position_seconds=position_seconds,
         progress_percent=progress_percent,
     )
+    if created_at is not None:
+        progress.created_at = created_at
+    if last_watched_at is not None:
+        progress.last_watched_at = last_watched_at
     session.add(progress)
     await session.flush()
     return progress
@@ -42,10 +51,13 @@ async def update_watch_progress(
     episode: int,
     position_seconds: int | None,
     progress_percent: float | None,
+    last_watched_at: datetime | None = None,
 ) -> WatchProgress:
     progress.episode = episode
     progress.position_seconds = position_seconds
     progress.progress_percent = progress_percent
+    if last_watched_at is not None:
+        progress.last_watched_at = last_watched_at
     await session.flush()
     return progress
 
