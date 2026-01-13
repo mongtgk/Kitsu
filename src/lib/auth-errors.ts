@@ -99,13 +99,13 @@ const navigateHome = () => {
   window.location.replace(ROUTES.HOME);
 };
 
-let authFailureHandled = false;
+let authFailureCommitted = false;
 
 const handleAuthFailure = () => {
-  if (authFailureHandled) {
+  if (authFailureCommitted) {
     return;
   }
-  authFailureHandled = true;
+  authFailureCommitted = true;
   getAuthStore().getState().clearAuth();
   if (authFailureHandlers.size > 0) {
     authFailureHandlers.forEach((handler) => handler(ROUTES.HOME));
