@@ -74,7 +74,6 @@ const Layout = (props: Props) => {
   }, [animeId, auth]);
 
   const [isFavorite, setIsFavorite] = useState(false);
-  const [favoriteId, setFavoriteId] = useState<string | null>(null);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   useEffect(() => {
@@ -90,10 +89,8 @@ const Layout = (props: Props) => {
           (fav) => fav.anime_id === animeId,
         );
         setIsFavorite(!!match);
-        setFavoriteId(match?.id ?? null);
       } catch {
         setIsFavorite(false);
-        setFavoriteId(null);
       }
     };
     loadFavorites();
@@ -110,22 +107,14 @@ const Layout = (props: Props) => {
     setFavoriteLoading(true);
     try {
       if (isFavorite) {
-        if (!favoriteId) {
-          toast.error("Favorite not found to remove", {
-            style: { background: "red" },
-          });
-          return;
-        }
         await api.delete(`/favorites/${animeId}`);
         setIsFavorite(false);
-        setFavoriteId(null);
         toast.success("Removed from favorites", {
           style: { background: "green" },
         });
       } else {
-        const res = await api.post("/favorites", { anime_id: animeId });
+        await api.post("/favorites", { anime_id: animeId });
         setIsFavorite(true);
-        setFavoriteId((res.data as any)?.id ?? null);
         toast.success("Added to favorites", { style: { background: "green" } });
       }
     } catch {
