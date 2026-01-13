@@ -2,7 +2,6 @@
 import { useEffect } from "react";
 import Container from "@/components/container";
 import Avatar from "@/components/common/avatar";
-import { usePermissions, useRole } from "@/auth/rbac";
 import { useAuthHydrated, useAuthSelector } from "@/store/auth-store";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useRouter } from "next/navigation";
@@ -17,8 +16,6 @@ function ProfilePage() {
   const auth = useAuthSelector((state) => state.auth);
   const router = useRouter();
   const hasHydrated = useAuthHydrated();
-  const role = useRole();
-  const permissions = usePermissions();
 
   useEffect(() => {
     if (hasHydrated && !auth) {
@@ -55,10 +52,6 @@ function ProfilePage() {
             url={auth.avatar}
           />
           <h2 className="text-xl">@{auth.username}</h2>
-          <div className="text-center text-sm text-gray-500 space-y-1">
-            <p>Role: {role}</p>
-            <p>Permissions: {permissions.join(", ")}</p>
-          </div>
         </div>
         <div className="w-full md:w-2/3">
           <div className="w-full">
