@@ -11,11 +11,14 @@ import AnimeLists from "./components/anime-lists";
 import AnimeHeatmap from "./components/anime-heatmap";
 import Loading from "@/app/loading";
 import AnilistImport from "./components/anilist-import";
+import { usePermissions } from "@/auth/rbac";
 
 function ProfilePage() {
   const auth = useAuthSelector((state) => state.auth);
   const router = useRouter();
   const hasHydrated = useAuthHydrated();
+  const permissions = usePermissions();
+  const canWriteProfile = permissions.includes("write:profile");
 
   useEffect(() => {
     if (hasHydrated && !auth) {
@@ -55,10 +58,12 @@ function ProfilePage() {
         </div>
         <div className="w-full md:w-2/3">
           <div className="w-full">
-            <div className="float-right flex gap-2 items-center mb-2">
-              <p className="text-sm text-gray-500">Import:</p>
-              <AnilistImport />
-            </div>
+            {canWriteProfile && (
+              <div className="float-right flex gap-2 items-center mb-2">
+                <p className="text-sm text-gray-500">Import:</p>
+                <AnilistImport />
+              </div>
+            )}
             <Tabs defaultValue="watching" className="w-full">
               <TabsList className="grid w-full grid-cols-1 sm:grid-cols-5">
                 <TabsTrigger value="watching">Watching</TabsTrigger>

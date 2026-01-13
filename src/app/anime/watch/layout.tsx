@@ -20,6 +20,7 @@ import { useGetAllEpisodes } from "@/query/get-all-episodes";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { useAuthSelector } from "@/store/auth-store";
+import { usePermissions } from "@/auth/rbac";
 
 type Props = {
   children: ReactNode;
@@ -33,6 +34,8 @@ const Layout = (props: Props) => {
   );
   const router = useRouter();
   const auth = useAuthSelector((state) => state.auth);
+  const permissions = usePermissions();
+  const canWriteContent = permissions.includes("write:content");
 
   const currentAnimeId = useMemo(
     () => searchParams.get("anime"),
@@ -168,18 +171,20 @@ const Layout = (props: Props) => {
             href={ROUTES.ANIME_DETAILS + "/" + anime?.anime.info.id}
           />
           <div className="flex flex-col gap-2">
-            <Button
-              variant={isFavorite ? "secondary" : "default"}
-              className="flex items-center gap-2"
-              onClick={toggleFavorite}
-              disabled={favoriteLoading}
-            >
-              <Heart
-                className="h-4 w-4"
-                fill={isFavorite ? "currentColor" : "none"}
-              />
-              {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-            </Button>
+            {canWriteContent && (
+              <Button
+                variant={isFavorite ? "secondary" : "default"}
+                className="flex items-center gap-2"
+                onClick={toggleFavorite}
+                disabled={favoriteLoading}
+              >
+                <Heart
+                  className="h-4 w-4"
+                  fill={isFavorite ? "currentColor" : "none"}
+                />
+                {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+              </Button>
+            )}
             <h1 className="text-2xl md:font-black font-extrabold z-[100]">
               {anime?.anime.info.name}
             </h1>

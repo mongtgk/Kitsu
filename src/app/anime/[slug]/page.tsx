@@ -23,11 +23,14 @@ import { toast } from "sonner";
 import { useGetAnimeBanner } from "@/query/get-banner-anime";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { usePermissions } from "@/auth/rbac";
 
 const Page = () => {
   const { slug } = useParams();
   const { data: anime, isLoading } = useGetAnimeDetails(slug as string);
   const auth = useAuthSelector((state) => state.auth);
+  const permissions = usePermissions();
+  const canWriteContent = permissions.includes("write:content");
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteId, setFavoriteId] = useState<string | null>(null);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
@@ -131,18 +134,20 @@ const Page = () => {
             </h1>
             <div className="flex items-center gap-5">
               <WatchButton />
-              <Button
-                variant={isFavorite ? "secondary" : "default"}
-                className="flex items-center gap-2"
-                onClick={toggleFavorite}
-                disabled={favoriteLoading}
-              >
-                <Heart
-                  className="h-4 w-4"
-                  fill={isFavorite ? "currentColor" : "none"}
-                />
-                {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-              </Button>
+              {canWriteContent && (
+                <Button
+                  variant={isFavorite ? "secondary" : "default"}
+                  className="flex items-center gap-2"
+                  onClick={toggleFavorite}
+                  disabled={favoriteLoading}
+                >
+                  <Heart
+                    className="h-4 w-4"
+                    fill={isFavorite ? "currentColor" : "none"}
+                  />
+                  {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+                </Button>
+              )}
             </div>
           </div>
         </div>
