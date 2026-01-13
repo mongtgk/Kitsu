@@ -48,6 +48,8 @@ const ALLOWED_IFRAME_HOSTS = [
   "youtu.be",
   "vimeo.com",
   "player.vimeo.com",
+  "youtube-nocookie.com",
+  "www.youtube-nocookie.com",
 ];
 
 export function isSafeIframeUrl(url: string | null | undefined): boolean {
@@ -55,7 +57,7 @@ export function isSafeIframeUrl(url: string | null | undefined): boolean {
   try {
     const parsedUrl = new URL(url);
     const protocol = parsedUrl.protocol.toLowerCase();
-    if (protocol !== "https:" && protocol !== "http:") {
+    if (protocol !== "https:") {
       return false;
     }
 
