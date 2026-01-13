@@ -41,8 +41,8 @@ class SoftRateLimiter:
 
 
 def make_key(scope: str, ip: str, identifier: str) -> str:
-    ip_component = ip or "unknown-ip"
-    identifier_component = identifier or "unknown-id"
+    ip_component = ip or f"unknown-ip-{identifier or 'na'}"
+    identifier_component = identifier or f"unknown-id-{ip or 'na'}"
     return f"{scope}:{ip_component}:{identifier_component}"
 
 

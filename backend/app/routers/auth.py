@@ -26,9 +26,6 @@ REFRESH_TOKEN_IDENTIFIER_LENGTH = 16
 def _client_ip(request: Request) -> str:
     if request.client and request.client.host:
         return request.client.host
-    forwarded_for = request.headers.get("x-forwarded-for")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
     return "unknown-ip"
 
 
@@ -57,7 +54,7 @@ async def login(
 
     try:
         tokens = await login_user(db, payload.email, payload.password)
-    except AuthError:
+    except (AuthError, PermissionError):
         auth_rate_limiter.record_failure(key)
         raise
     auth_rate_limiter.reset(key)
