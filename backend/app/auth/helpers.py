@@ -23,12 +23,14 @@ def get_current_permissions(user: User | None) -> list[rbac.Permission]:
 
 
 def _log_deny(request: Request, role: rbac.Role, required: Iterable[rbac.Permission]) -> None:
-    required_list = tuple(required)
+    required_permissions = ",".join(required)
+    if required_permissions == "":
+        required_permissions = "none"
     logger.warning(
         "RBAC deny: role=%s path=%s required_permissions=%s",
         role,
         request.url.path,
-        ",".join(required_list) or "none",
+        required_permissions,
     )
 
 

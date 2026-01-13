@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth.helpers import require_any_permission, require_permission
+from ..auth.helpers import require_permission
 from ..dependencies import get_db
 
 router = APIRouter(prefix="/collections", tags=["collections"])
@@ -9,7 +9,7 @@ router = APIRouter(prefix="/collections", tags=["collections"])
 
 @router.get(
     "/",
-    dependencies=[Depends(require_any_permission(["read:content"]))],
+    dependencies=[Depends(require_permission("read:content"))],
 )
 async def list_collections(db: AsyncSession = Depends(get_db)) -> list[dict]:
     # TODO: Replace with collection retrieval.
