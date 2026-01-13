@@ -88,7 +88,11 @@ class JobRunner:
                 if job.attempts >= job.max_attempts:
                     self._statuses[job.key] = JobStatus.FAILED
                     return
-                await asyncio.sleep(job.backoff_seconds * job.attempts)
+                delay = min(
+                    job.backoff_seconds * job.attempts,
+                    job.backoff_seconds * job.max_attempts,
+                )
+                await asyncio.sleep(delay)
             else:
                 self._statuses[job.key] = JobStatus.SUCCEEDED
                 return

@@ -22,8 +22,11 @@ async def _apply_remove_favorite(
 async def remove_favorite(
     session: AsyncSession, user_id: uuid.UUID, anime_id: uuid.UUID
 ) -> None:
+    async def handler() -> None:
+        await _apply_remove_favorite(user_id, anime_id)
+
     job = Job(
         key=f"favorite:remove:{user_id}:{anime_id}",
-        handler=lambda: _apply_remove_favorite(user_id, anime_id),
+        handler=handler,
     )
     await default_job_runner.enqueue(job)

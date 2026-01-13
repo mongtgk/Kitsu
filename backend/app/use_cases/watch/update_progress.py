@@ -118,7 +118,11 @@ async def update_progress(
             )
 
     job = Job(
-        key=f"watch-progress:{user_id}:{anime_id}:{episode}:{position_seconds}:{progress_percent}",
+        key=(
+            f"watch-progress:{user_id}:{anime_id}:episode={episode}:"
+            f"position={position_seconds if position_seconds is not None else 'none'}:"
+            f"percent={progress_percent if progress_percent is not None else 'none'}"
+        ),
         handler=handler,
     )
     await default_job_runner.enqueue(job)
