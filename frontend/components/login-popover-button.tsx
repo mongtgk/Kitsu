@@ -47,26 +47,15 @@ function LoginPopoverButton() {
 
       const accessToken = tokens.accessToken || "";
       const refreshToken = tokens.refreshToken || "";
-
-      if (accessToken) {
-        setAuth({
-          id: undefined,
-          email: formData.email,
-          username: formData.email?.split("@")[0],
-          avatar: "",
-          collectionId: "",
-          collectionName: "",
-          autoSkip: false,
-          accessToken,
-          refreshToken,
-        });
-      }
+      const authHeaders = accessToken
+        ? { Authorization: `Bearer ${accessToken}` }
+        : undefined;
 
       let userEmail = formData.email;
       let userId: string | undefined;
       if (accessToken) {
         try {
-          const profile = await api.get("/users/me");
+          const profile = await api.get("/users/me", { headers: authHeaders });
           userEmail = (profile.data as any)?.email || userEmail;
           userId = (profile.data as any)?.id;
         } catch {
@@ -130,26 +119,15 @@ function LoginPopoverButton() {
 
       const accessToken = tokens.accessToken || "";
       const refreshToken = tokens.refreshToken || "";
-
-      if (accessToken) {
-        setAuth({
-          id: undefined,
-          email: formData.email,
-          username: formData.email?.split("@")[0],
-          avatar: "",
-          collectionId: "",
-          collectionName: "",
-          autoSkip: false,
-          accessToken,
-          refreshToken,
-        });
-      }
+      const authHeaders = accessToken
+        ? { Authorization: `Bearer ${accessToken}` }
+        : undefined;
 
       let userEmail = formData.email;
       let userId: string | undefined;
       if (accessToken) {
         try {
-          const profile = await api.get("/users/me");
+          const profile = await api.get("/users/me", { headers: authHeaders });
           userEmail = (profile.data as any)?.email || userEmail;
           userId = (profile.data as any)?.id;
         } catch {

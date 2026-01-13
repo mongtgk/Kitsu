@@ -49,8 +49,8 @@ async def import_provider(provider: str, payload: dict[str, Any]) -> dict[str, A
                         detail="Upstream service failed",
                     ) from exc
                 raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="Upstream request was rejected",
+                    status_code=upstream_status,
+                    detail=exc.response.text,
                 ) from exc
             except httpx.HTTPError as exc:
                 raise HTTPException(
