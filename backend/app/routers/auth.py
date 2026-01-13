@@ -20,6 +20,15 @@ from ..utils.security import hash_refresh_token
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown-ip"
+
+
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     payload: UserRegister, db: AsyncSession = Depends(get_db)
@@ -34,7 +43,7 @@ async def register(
 async def login(
     payload: UserLogin, request: Request, db: AsyncSession = Depends(get_db)
 ) -> TokenResponse:
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _client_ip(request)
     key = make_key("login", client_ip, payload.email.lower())
     if auth_rate_limiter.is_limited(key):
         raise AppError(
@@ -58,8 +67,8 @@ async def login(
 async def refresh_token(
     payload: RefreshTokenRequest, request: Request, db: AsyncSession = Depends(get_db)
 ) -> TokenResponse:
-    client_ip = request.client.host if request.client else "unknown"
-    token_identifier = hash_refresh_token(payload.refresh_token)[:12]
+    client_ip = _client_ip(request)
+    token_identifier = hash_refresh_token(payload.refresh_token)[:16]
     key = make_key("refresh", client_ip, token_identifier)
     if auth_rate_limiter.is_limited(key):
         raise AppError(

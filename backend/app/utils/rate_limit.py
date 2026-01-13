@@ -36,9 +36,10 @@ class SoftRateLimiter:
         self._attempts.clear()
 
 
-def make_key(scope: str, ip: str, identifier: str | None = None) -> str:
-    safe_identifier = identifier or "unknown"
-    return f"{scope}:{ip or 'unknown'}:{safe_identifier}"
+def make_key(scope: str, ip: str, identifier: str) -> str:
+    ip_component = ip or "unknown-ip"
+    identifier_component = identifier or "unknown-id"
+    return f"{scope}:{ip_component}:{identifier_component}"
 
 
 auth_rate_limiter = SoftRateLimiter(max_attempts=5, window_seconds=60)
