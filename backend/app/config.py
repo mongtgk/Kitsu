@@ -1,3 +1,4 @@
+import json
 import os
 from urllib.parse import urlparse
 
@@ -36,7 +37,6 @@ class Settings(BaseModel):
         allowed_origins: list[str] = []
         if raw_allowed_origins.startswith("["):
             # JSON array format: ["http://localhost:3000", "http://localhost:8080"]
-            import json
             try:
                 parsed_list = json.loads(raw_allowed_origins)
                 if not isinstance(parsed_list, list):

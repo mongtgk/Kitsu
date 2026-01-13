@@ -48,7 +48,7 @@ def test_allowed_origins_rejects_wildcard(monkeypatch: pytest.MonkeyPatch) -> No
     
     from app.config import Settings
     
-    with pytest.raises(ValueError, match="cannot contain '\\*' when credentialed requests"):
+    with pytest.raises(ValueError, match=r"cannot contain '\*' when credentialed requests"):
         Settings.from_env()
 
 

@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 # Ensure required environment variables are present for module imports.
+# These are defaults used only if not already set, avoiding test isolation issues.
 os.environ.setdefault("SECRET_KEY", "test-secret")
 os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:3000")
 os.environ.setdefault(
