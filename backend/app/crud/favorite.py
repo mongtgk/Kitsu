@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,9 +18,19 @@ async def get_favorite(
 
 
 async def add_favorite(
-    session: AsyncSession, user_id: uuid.UUID, anime_id: uuid.UUID
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    anime_id: uuid.UUID,
+    favorite_id: uuid.UUID | None = None,
+    created_at: datetime | None = None,
 ) -> Favorite:
-    favorite = Favorite(user_id=user_id, anime_id=anime_id)
+    favorite = Favorite(
+        id=favorite_id or uuid.uuid4(),
+        user_id=user_id,
+        anime_id=anime_id,
+    )
+    if created_at is not None:
+        favorite.created_at = created_at
     session.add(favorite)
     await session.flush()
     return favorite
