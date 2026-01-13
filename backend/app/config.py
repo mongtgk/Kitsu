@@ -32,9 +32,26 @@ class Settings(BaseModel):
         if not raw_allowed_origins:
             raise ValueError("ALLOWED_ORIGINS environment variable must be set")
 
-        allowed_origins = [
-            origin.strip() for origin in raw_allowed_origins.split(",") if origin.strip()
-        ]
+        # Support both CSV format and JSON array format
+        allowed_origins: list[str] = []
+        if raw_allowed_origins.startswith("["):
+            # JSON array format: ["http://localhost:3000", "http://localhost:8080"]
+            import json
+            try:
+                parsed_list = json.loads(raw_allowed_origins)
+                if not isinstance(parsed_list, list):
+                    raise ValueError("ALLOWED_ORIGINS JSON must be an array")
+                allowed_origins = [
+                    origin.strip() for origin in parsed_list if isinstance(origin, str) and origin.strip()
+                ]
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"ALLOWED_ORIGINS JSON is malformed: {exc}") from exc
+        else:
+            # CSV format: http://localhost:3000,http://localhost:8080
+            allowed_origins = [
+                origin.strip() for origin in raw_allowed_origins.split(",") if origin.strip()
+            ]
+        
         if not allowed_origins:
             raise ValueError("ALLOWED_ORIGINS must contain at least one origin")
 
