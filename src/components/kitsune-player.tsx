@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useState,
   HTMLAttributes,
+  useCallback,
 } from "react";
 import Artplayer from "artplayer";
 import type {Option} from "artplayer";
@@ -84,23 +85,28 @@ function KitsunePlayer({
   const permissions = usePermissions();
   const canWriteContent = permissions.includes("write:content");
   const allowProgressSyncRef = useRef<boolean>(!!auth && canWriteContent);
-  const resetProgressRefs = () => {
+  const resetProgressRefs = useCallback(() => {
     bookmarkIdRef.current = null;
     watchedRecordIdRef.current = null;
     watchHistoryIdsRef.current = [];
     hasMetMinWatchTimeRef.current = false;
     initialSeekTimeRef.current = null;
-  };
+  }, []);
+  const resetIfDisallowed = useCallback(() => {
+    if (!allowProgressSyncRef.current) {
+      resetProgressRefs();
+      return true;
+    }
+    return false;
+  }, [resetProgressRefs]);
   const { createOrUpdateBookMark, syncWatchProgress } = useBookMarks({
     populate: false,
   });
 
   useEffect(() => {
     allowProgressSyncRef.current = !!auth && canWriteContent;
-    if (!allowProgressSyncRef.current) {
-      resetProgressRefs();
-    }
-  }, [auth, canWriteContent]);
+    if (resetIfDisallowed()) return;
+  }, [auth, canWriteContent, resetIfDisallowed]);
 
   useEffect(() => {
     setIsAutoSkipEnabled(autoSkip);
@@ -146,8 +152,7 @@ function KitsunePlayer({
     let isMounted = true; // Track mount status for async operations
 
     const fetchBookmarkAndWatchedId = async () => {
-      if (!allowProgressSyncRef.current) {
-        resetProgressRefs();
+      if (resetIfDisallowed()) {
         return;
       }
       const id = await createOrUpdateBookMark(
