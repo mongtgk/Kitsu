@@ -3,6 +3,10 @@ from collections import defaultdict
 from typing import DefaultDict, List
 
 
+AUTH_RATE_LIMIT_MAX_ATTEMPTS = 5
+AUTH_RATE_LIMIT_WINDOW_SECONDS = 60
+
+
 class SoftRateLimiter:
     def __init__(self, max_attempts: int, window_seconds: int) -> None:
         self.max_attempts = max_attempts
@@ -42,4 +46,7 @@ def make_key(scope: str, ip: str, identifier: str) -> str:
     return f"{scope}:{ip_component}:{identifier_component}"
 
 
-auth_rate_limiter = SoftRateLimiter(max_attempts=5, window_seconds=60)
+auth_rate_limiter = SoftRateLimiter(
+    max_attempts=AUTH_RATE_LIMIT_MAX_ATTEMPTS,
+    window_seconds=AUTH_RATE_LIMIT_WINDOW_SECONDS,
+)

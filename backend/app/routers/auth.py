@@ -20,12 +20,15 @@ from ..utils.security import hash_refresh_token
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+REFRESH_TOKEN_IDENTIFIER_LENGTH = 16
+
+
 def _client_ip(request: Request) -> str:
+    if request.client and request.client.host:
+        return request.client.host
     forwarded_for = request.headers.get("x-forwarded-for")
     if forwarded_for:
         return forwarded_for.split(",")[0].strip()
-    if request.client and request.client.host:
-        return request.client.host
     return "unknown-ip"
 
 
@@ -68,7 +71,9 @@ async def refresh_token(
     payload: RefreshTokenRequest, request: Request, db: AsyncSession = Depends(get_db)
 ) -> TokenResponse:
     client_ip = _client_ip(request)
-    token_identifier = hash_refresh_token(payload.refresh_token)[:16]
+    token_identifier = hash_refresh_token(payload.refresh_token)[
+        :REFRESH_TOKEN_IDENTIFIER_LENGTH
+    ]
     key = make_key("refresh", client_ip, token_identifier)
     if auth_rate_limiter.is_limited(key):
         raise AppError(
