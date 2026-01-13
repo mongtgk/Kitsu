@@ -6,7 +6,6 @@ import { Input } from "./ui/input";
 import { toast } from "sonner";
 import { useAuthSelector } from "@/store/auth-store";
 import { api } from "@/lib/api";
-import { usePermissions, useRole } from "@/auth/rbac";
 
 type FormData = {
   email: string;
@@ -22,8 +21,6 @@ function LoginPopoverButton() {
     confirm_password: "",
   });
   const [tabValue, setTabValue] = useState<"login" | "signup">("login");
-  const role = useRole();
-  const permissions = usePermissions();
 
   const loginWithEmail = async () => {
     try {
@@ -257,24 +254,6 @@ function LoginPopoverButton() {
             </Button>
           </TabsContent>
         </Tabs>
-        {role === "guest" ? (
-          <p className="mt-3 text-xs text-gray-400" aria-live="polite">
-            You are browsing as a guest. Sign in to see your assigned role and
-            permissions.
-          </p>
-        ) : (
-          <dl
-            className="mt-3 text-xs text-gray-300 space-y-1"
-            aria-label="Current access context"
-          >
-            <dt className="text-gray-400">Role</dt>
-            <dd className="text-red-400 font-semibold">{role}</dd>
-            <dt className="text-gray-400">Permissions</dt>
-            <dd className="text-[11px] text-gray-400">
-              {permissions.join(", ")}
-            </dd>
-          </dl>
-        )}
       </PopoverContent>
     </Popover>
   );

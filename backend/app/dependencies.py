@@ -5,7 +5,6 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .auth.rbac import Permission, Role, resolve_permissions, resolve_role
 from .database import get_session
 from .models.user import User
 from .utils.security import (
@@ -20,19 +19,6 @@ bearer_scheme = HTTPBearer(auto_error=False)
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async for session in get_session():
         yield session
-
-
-async def get_current_user_optional(
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-    db: AsyncSession = Depends(get_db),
-) -> User | None:
-    if credentials is None or credentials.scheme.lower() != "bearer":
-        return None
-
-    try:
-        return await get_current_user(credentials, db)
-    except HTTPException:
-        return None
 
 
 async def get_current_user(
@@ -78,15 +64,3 @@ async def get_current_user(
         )
 
     return user
-
-
-async def get_current_role(
-    user: User | None = Depends(get_current_user_optional),
-) -> Role:
-    return resolve_role(user)
-
-
-async def get_current_permissions(
-    role: Role = Depends(get_current_role),
-) -> list[Permission]:
-    return resolve_permissions(role)

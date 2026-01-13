@@ -1,16 +1,5 @@
-"use client";
-
-import { useMemo } from "react";
-
-import { type IAuth, useAuthSelector } from "@/store/auth-store";
-
 export type Role = "guest" | "user" | "admin";
-export type Permission =
-  | "read:profile"
-  | "write:profile"
-  | "read:content"
-  | "write:content"
-  | "admin:*";
+export type Permission = string;
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   guest: ["read:content"],
@@ -27,25 +16,18 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 const isRole = (value: unknown): value is Role =>
   typeof value === "string" && value in ROLE_PERMISSIONS;
 
-export const resolveRole = (auth: IAuth | null): Role => {
-  const explicitRole = (auth as { role?: Role | string } | null)?.role;
-  if (isRole(explicitRole)) {
-    return explicitRole;
+type MinimalAuth = { role?: Role | string; accessToken?: string | null } | null;
+
+export const resolveRole = (auth: MinimalAuth): Role => {
+  if (auth && isRole(auth.role)) {
+    return auth.role;
   }
-  if (!auth) return "guest";
-  return "user";
+  if (auth?.accessToken) {
+    return "user";
+  }
+  return "guest";
 };
 
-export const resolvePermissions = (role: Role): Permission[] => {
-  return [...ROLE_PERMISSIONS[role]];
-};
-
-export const useRole = () => {
-  const auth = useAuthSelector((state) => state.auth);
-  return useMemo(() => resolveRole(auth), [auth]);
-};
-
-export const usePermissions = () => {
-  const role = useRole();
-  return useMemo(() => resolvePermissions(role), [role]);
-};
+export const resolvePermissions = (role: Role): Permission[] => [
+  ...ROLE_PERMISSIONS[role],
+];

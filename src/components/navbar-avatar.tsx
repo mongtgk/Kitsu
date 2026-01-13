@@ -5,7 +5,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import Link from "next/link";
 import { User, LogOut } from "lucide-react";
 import { api } from "@/lib/api";
-import { usePermissions, useRole } from "@/auth/rbac";
 
 type Props = {
   auth: IAuth | null;
@@ -14,8 +13,6 @@ type Props = {
 
 function NavbarAvatar({ auth, clearAuth }: Props) {
   const [open, setOpen] = React.useState(false);
-  const role = useRole();
-  const permissions = usePermissions();
   const profileSlug = auth?.username || auth?.email || "me";
 
   return (
@@ -34,14 +31,6 @@ function NavbarAvatar({ auth, clearAuth }: Props) {
               <span className="text-red-500">
                 @{auth.username || auth.email}
               </span>
-            </p>
-          </div>
-          <div className="text-xs space-y-1 text-gray-300">
-            <p>
-              Role: <span className="text-red-400 font-semibold">{role}</span>
-            </p>
-            <p className="text-[11px] text-gray-400">
-              Permissions: {permissions.join(", ")}
             </p>
           </div>
           <div className="border-b border-gray-600 pb-2">
