@@ -16,4 +16,3 @@ async def list_collections(db: AsyncSession = Depends(get_db)) -> list[dict]:
 async def create_collection(db: AsyncSession = Depends(get_db)) -> dict:
     # TODO: Persist collection to database.
     return {"message": "collection created"}
-
