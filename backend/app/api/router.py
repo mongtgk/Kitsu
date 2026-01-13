@@ -1,0 +1,31 @@
+from fastapi import APIRouter
+
+from .internal import favorites as internal_favorites
+from .internal import health as internal_health
+from .internal import users as internal_users
+from .internal import watch as internal_watch
+from .proxy import anime as proxy_anime
+from .proxy import episodes as proxy_episodes
+from .proxy import import_anilist as proxy_import_anilist
+from .proxy import schedule as proxy_schedule
+from .proxy import search as proxy_search
+
+router = APIRouter(prefix="/api")
+
+_internal_routers = [
+    internal_health.router,
+    internal_favorites.router,
+    internal_watch.router,
+    internal_users.router,
+]
+
+_proxy_routers = [
+    proxy_schedule.router,
+    proxy_search.router,
+    proxy_anime.router,
+    proxy_episodes.router,
+    proxy_import_anilist.router,
+]
+
+for _router in [*_internal_routers, *_proxy_routers]:
+    router.include_router(_router)
