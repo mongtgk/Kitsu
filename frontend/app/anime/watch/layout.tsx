@@ -116,7 +116,7 @@ const Layout = (props: Props) => {
           });
           return;
         }
-        await api.delete(`/favorites/${favoriteId}`);
+        await api.delete(`/favorites/${animeId}`);
         setIsFavorite(false);
         setFavoriteId(null);
         toast.success("Removed from favorites", {
