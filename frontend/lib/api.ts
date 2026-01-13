@@ -13,6 +13,11 @@ export const api = axios.create({
   timeout: 10000,
 });
 
+const refreshClient = axios.create({
+  baseURL,
+  timeout: 10000,
+});
+
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = getAuthStore().getState().auth?.accessToken;
   if (token) {
@@ -32,7 +37,7 @@ api.interceptors.response.use(
     const isRefreshRequest = config?.url?.includes("/auth/refresh");
 
     if (status === 403) {
-      handleAuthError(error);
+      return handleAuthError(error);
     }
 
     if (status === 401 && config && !config._retry && !isRefreshRequest) {
@@ -40,17 +45,15 @@ api.interceptors.response.use(
       const refreshToken = authStore.getState().auth?.refreshToken;
 
       if (!refreshToken) {
-        handleAuthError(error);
+        return handleAuthError(error);
       }
 
       config._retry = true;
       try {
         authStore.getState().setIsRefreshing(true);
-        const refreshResponse = await axios.post(
-          `${baseURL}/auth/refresh`,
-          { refresh_token: refreshToken },
-          { timeout: 10000 },
-        );
+        const refreshResponse = await refreshClient.post("/auth/refresh", {
+          refresh_token: refreshToken,
+        });
         const tokens = refreshResponse.data as {
           access_token?: string;
           refresh_token?: string;
@@ -79,13 +82,13 @@ api.interceptors.response.use(
         config.headers.Authorization = `Bearer ${accessToken}`;
         return api(config);
       } catch (refreshError) {
-        handleAuthError(refreshError);
+        return handleAuthError(refreshError);
       } finally {
         authStore.getState().setIsRefreshing(false);
       }
     }
 
-    handleAuthError(error);
+    return handleAuthError(error);
   },
 );
 
