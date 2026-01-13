@@ -22,10 +22,12 @@ def _log_deny(request: Request | None, role: rbac.Role, required: Iterable[rbac.
     required_permissions = ",".join(required)
     if required_permissions == "":
         required_permissions = "none"
+    method = request.method if request else "unknown"
     path = request.url.path if request else "unknown"
     logger.warning(
-        "RBAC deny: role=%s path=%s required_permissions=%s",
+        "RBAC deny: role=%s method=%s path=%s required_permissions=%s",
         role,
+        method,
         path,
         required_permissions,
     )

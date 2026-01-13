@@ -49,7 +49,7 @@ class AuthError(AppError):
 
 class PermissionError(AppError):  # type: ignore[override]
     code = "PERMISSION_DENIED"
-    message = "Permission denied"
+    message = "Insufficient permissions"
     status_code = status.HTTP_403_FORBIDDEN
 
 
