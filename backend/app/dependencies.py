@@ -6,6 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import get_session
+from .auth import rbac
 from .models.user import User
 from .utils.security import (
     TokenExpiredError,
@@ -65,3 +66,17 @@ async def get_current_user(
 
     return user
 
+
+async def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    if credentials is None:
+        return None
+    return await get_current_user(credentials=credentials, db=db)
+
+
+async def get_current_role(
+    user: User | None = Depends(get_current_user_optional),
+) -> rbac.Role:
+    return rbac.resolve_role(user)
