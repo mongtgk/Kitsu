@@ -100,7 +100,6 @@ const Layout = (props: Props) => {
   }, [animeId, auth]);
 
   const toggleFavorite = async () => {
-    if (!canWriteContent) return;
     if (!animeId) return;
     if (!auth) {
       toast.error("Please login to manage favorites", {

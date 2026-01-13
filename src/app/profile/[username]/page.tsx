@@ -61,12 +61,10 @@ function ProfilePage() {
         </div>
         <div className="w-full md:w-2/3">
           <div className="w-full">
-            {canWriteProfile && (
-              <div className="float-right flex gap-2 items-center mb-2">
-                <p className="text-sm text-gray-500">Import:</p>
-                <AnilistImport />
-              </div>
-            )}
+            <div className="float-right flex gap-2 items-center mb-2">
+              <p className="text-sm text-gray-500">Import:</p>
+              <AnilistImport disabled={!canWriteProfile} />
+            </div>
             <Tabs defaultValue="watching" className="w-full">
               <TabsList className="grid w-full grid-cols-1 sm:grid-cols-5">
                 <TabsTrigger value="watching">Watching</TabsTrigger>

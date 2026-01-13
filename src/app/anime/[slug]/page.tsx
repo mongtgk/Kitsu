@@ -66,7 +66,6 @@ const Page = () => {
   }, [auth, slug]);
 
   const toggleFavorite = async () => {
-    if (!canWriteContent) return;
     if (!auth) {
       toast.error("Please login to manage favorites", {
         style: { background: "red" },
