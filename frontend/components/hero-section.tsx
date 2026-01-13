@@ -9,7 +9,6 @@ import {
 
 import Container from "./container";
 import { Button } from "./ui/button";
-import parse from "html-react-parser";
 
 import React from "react";
 import { ArrowLeft, ArrowRight, Captions, Mic } from "lucide-react";
@@ -128,7 +127,7 @@ const HeroCarouselItem = ({ anime }: { anime: SpotlightAnime }) => {
             </div>
 
             <p className="text-lg line-clamp-4">
-              {parse(anime?.description as string)}
+              {anime?.description}
             </p>
             <div className="flex items-center gap-5 !mt-5">
               <ButtonLink

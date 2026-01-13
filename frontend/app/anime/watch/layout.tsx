@@ -1,7 +1,6 @@
 "use client";
 
 import Loading from "@/app/loading";
-import parse from "html-react-parser";
 import { ROUTES } from "@/constants/routes";
 
 import Container from "@/components/container";
@@ -178,7 +177,7 @@ const Layout = (props: Props) => {
             <h1 className="text-2xl md:font-black font-extrabold z-[100]">
               {anime?.anime.info.name}
             </h1>
-            <p>{parse(anime?.anime.info.description as string)}</p>
+            <p>{anime?.anime.info.description}</p>
           </div>
         </div>
         <AnimeCarousel

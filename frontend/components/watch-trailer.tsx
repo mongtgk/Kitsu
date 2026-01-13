@@ -5,11 +5,14 @@ import { CirclePlay } from "lucide-react";
 import Button from "./common/custom-button";
 import { AnimatePresence, motion } from "framer-motion";
 import { XIcon } from "lucide-react";
+import { isSafeIframeUrl } from "@/lib/utils";
 
 const WatchTrailer = ({ videoHref }: { videoHref: string }) => {
   const [isVideoOpen, setIsVideoOpen] = useState(false);
 
-  if (!videoHref) return <></>;
+  const isSafeVideoHref = isSafeIframeUrl(videoHref);
+
+  if (!videoHref || !isSafeVideoHref) return <></>;
 
   return (
     <>

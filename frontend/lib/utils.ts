@@ -40,3 +40,33 @@ export function formatSecondsToMMSS(
   // 4. Combine and Return
   return `${formattedMinutes}:${formattedSeconds}`;
 }
+
+const ALLOWED_IFRAME_HOSTS = [
+  "youtube.com",
+  "www.youtube.com",
+  "m.youtube.com",
+  "youtu.be",
+  "vimeo.com",
+  "player.vimeo.com",
+  "youtube-nocookie.com",
+  "www.youtube-nocookie.com",
+];
+
+export function isSafeIframeUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    const parsedUrl = new URL(url);
+    const protocol = parsedUrl.protocol.toLowerCase();
+    if (protocol !== "https:") {
+      return false;
+    }
+
+    const hostname = parsedUrl.hostname.toLowerCase();
+    return ALLOWED_IFRAME_HOSTS.some(
+      (allowedHost) =>
+        hostname === allowedHost || hostname.endsWith(`.${allowedHost}`),
+    );
+  } catch {
+    return false;
+  }
+}
