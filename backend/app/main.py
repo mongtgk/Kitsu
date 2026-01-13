@@ -40,8 +40,6 @@ from .routers import (
     favorites,
     releases,
     search,
-    users,
-    views,
     watch,
 )
 from .utils.health import check_database_connection
@@ -123,13 +121,11 @@ app.mount(
 
 routers = [
     auth.router,
-    users.router,
     anime.router,
     releases.router,
     episodes.router,
     collections.router,
     favorites.router,
-    views.router,
     watch.router,
     api_router,
 ]
