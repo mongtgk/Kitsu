@@ -110,7 +110,7 @@ def make_client(role: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     async def fake_remove_favorite_use_case(
         _db: DummySession, user_id: uuid.UUID, anime_id: uuid.UUID
     ) -> None:
-        return None
+        pass
 
     async def fake_update_progress(
         _db: DummySession,
