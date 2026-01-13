@@ -74,6 +74,31 @@ async def _apply_watch_progress(
         raise
 
 
+async def persist_update_progress(
+    user_id: uuid.UUID,
+    anime_id: uuid.UUID,
+    episode: int,
+    position_seconds: int | None,
+    progress_percent: float | None,
+    *,
+    progress_id: uuid.UUID,
+    created_at: datetime,
+    last_watched_at: datetime,
+) -> None:
+    async with AsyncSessionLocal() as job_session:
+        await _apply_watch_progress(
+            job_session,
+            user_id,
+            anime_id,
+            episode,
+            position_seconds,
+            progress_percent,
+            progress_id=progress_id,
+            created_at=created_at,
+            last_watched_at=last_watched_at,
+        )
+
+
 async def update_progress(
     session: AsyncSession,
     user_id: uuid.UUID,
@@ -104,18 +129,16 @@ async def update_progress(
     )
 
     async def handler() -> None:
-        async with AsyncSessionLocal() as job_session:
-            await _apply_watch_progress(
-                job_session,
-                user_id,
-                anime_id,
-                episode,
-                position_seconds,
-                progress_percent,
-                progress_id=progress_id,
-                created_at=created_at,
-                last_watched_at=result.last_watched_at,
-            )
+        await persist_update_progress(
+            user_id,
+            anime_id,
+            episode,
+            position_seconds,
+            progress_percent,
+            progress_id=progress_id,
+            created_at=created_at,
+            last_watched_at=result.last_watched_at,
+        )
 
     job = Job(
         key=(

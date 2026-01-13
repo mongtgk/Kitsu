@@ -38,6 +38,16 @@ async def _apply_add_favorite(
         raise
 
 
+async def persist_add_favorite(
+    user_id: uuid.UUID,
+    anime_id: uuid.UUID,
+    favorite_id: uuid.UUID,
+    created_at: datetime,
+) -> None:
+    async with AsyncSessionLocal() as job_session:
+        await _apply_add_favorite(job_session, user_id, anime_id, favorite_id, created_at)
+
+
 async def add_favorite(
     session: AsyncSession, user_id: uuid.UUID, anime_id: uuid.UUID
 ) -> FavoriteRead:
@@ -54,10 +64,7 @@ async def add_favorite(
     result = FavoriteRead(id=favorite_id, anime_id=anime_id, created_at=created_at)
 
     async def handler() -> None:
-        async with AsyncSessionLocal() as job_session:
-            await _apply_add_favorite(
-                job_session, user_id, anime_id, favorite_id, created_at
-            )
+        await persist_add_favorite(user_id, anime_id, favorite_id, created_at)
 
     job = Job(key=f"favorite:add:{user_id}:{anime_id}", handler=handler)
     await default_job_runner.enqueue(job)
