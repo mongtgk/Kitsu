@@ -36,6 +36,9 @@ const Layout = (props: Props) => {
   const auth = useAuthSelector((state) => state.auth);
   const permissions = usePermissions();
   const canWriteContent = permissions.includes("write:content");
+  // RBAC NOTE:
+  // write:content — visibility only (P1.4)
+  // enforcement planned in P2
 
   const currentAnimeId = useMemo(
     () => searchParams.get("anime"),

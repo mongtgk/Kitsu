@@ -19,6 +19,9 @@ function ProfilePage() {
   const hasHydrated = useAuthHydrated();
   const permissions = usePermissions();
   const canWriteProfile = permissions.includes("write:profile");
+  // RBAC NOTE:
+  // write:profile — visibility only (P1.4)
+  // enforcement planned in P2
 
   useEffect(() => {
     if (hasHydrated && !auth) {
