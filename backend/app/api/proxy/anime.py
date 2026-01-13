@@ -1,10 +1,11 @@
 from typing import Any
 
-from bs4 import BeautifulSoup
 import httpx
 from fastapi import APIRouter, HTTPException, status
 
-from .common import SRC_AJAX_URL, SRC_BASE_URL, get_client, parse_sync_ids, safe_int
+from app.parser import anime as anime_parser
+
+from .common import SRC_AJAX_URL, SRC_BASE_URL, get_client
 
 router = APIRouter(prefix="/anime", tags=["Anime"])
 
@@ -38,18 +39,7 @@ async def _fetch_episodes(anime_id: str) -> dict[str, Any]:
             detail="Upstream service unavailable",
         ) from exc
 
-    soup = BeautifulSoup(html, "html.parser")
-    episodes = []
-    for link in soup.select(".detail-infor-content .ss-list a"):
-        episodes.append(
-            {
-                "title": link.get("title"),
-                "episodeId": (link.get("href") or "").split("/")[-1],
-                "number": safe_int(link.get("data-number")) or 0,
-                "isFiller": "ssl-item-filler" in link.get("class", []),
-            }
-        )
-    return {"totalEpisodes": len(episodes), "episodes": episodes}
+    return anime_parser.parse_episodes_html(html)
 
 
 @router.get("/{anime_id}")
@@ -74,21 +64,8 @@ async def anime_info(anime_id: str) -> dict[str, Any]:
             detail="Upstream service unavailable",
         ) from exc
 
-    ids = parse_sync_ids(resp.text)
-    soup = BeautifulSoup(resp.text, "html.parser")
-    title_el = soup.select_one(".film-name.dynamic-name") or soup.select_one("title")
-    poster_el = soup.select_one(".film-poster-img")
-    description_el = soup.select_one(".film-description .text")
-    return {
-        "data": {
-            "id": anime_id,
-            "title": title_el.text.strip() if title_el else anime_id,
-            "poster": poster_el.get("src") if poster_el else None,
-            "description": description_el.text.strip() if description_el else "",
-            "anilistID": ids["anilistID"],
-            "malID": ids["malID"],
-        }
-    }
+    data = anime_parser.parse_anime_page(resp.text, anime_id)
+    return {"data": data}
 
 
 @router.get("/{anime_id}/episodes")
