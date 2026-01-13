@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Iterable
+from typing import Annotated, Iterable, TYPE_CHECKING
 
 from fastapi import Depends, HTTPException, Request, status
 
@@ -10,6 +10,12 @@ from ..dependencies import get_current_role
 from ..errors import PermissionError
 
 logger = logging.getLogger("kitsu.rbac")
+
+if TYPE_CHECKING:
+    OptionalRequest = Request | None
+else:
+    # FastAPI cannot resolve Optional[Request] in dependency signatures at runtime
+    OptionalRequest = Request
 
 
 def _log_deny(request: Request | None, role: rbac.Role, required: Iterable[rbac.Permission]) -> None:
@@ -27,8 +33,8 @@ def _log_deny(request: Request | None, role: rbac.Role, required: Iterable[rbac.
 
 def require_permission(permission: rbac.Permission):
     async def dependency(
-        role: rbac.Role = Depends(get_current_role),
-        request: Request | None = None,
+        role: Annotated[rbac.Role, Depends(get_current_role)],
+        request: OptionalRequest = None,
     ) -> None:
         permissions = rbac.resolve_permissions(role)
         if permission in permissions:
@@ -45,8 +51,8 @@ def require_any_permission(permissions: Iterable[rbac.Permission]):
     required_permissions = tuple(permissions)
 
     async def dependency(
-        role: rbac.Role = Depends(get_current_role),
-        request: Request | None = None,
+        role: Annotated[rbac.Role, Depends(get_current_role)],
+        request: OptionalRequest = None,
     ) -> None:
         current_permissions = rbac.resolve_permissions(role)
         if any(permission in current_permissions for permission in required_permissions):

@@ -1,8 +1,11 @@
 import asyncio
 import os
+import uuid
+from datetime import datetime
 
 import pytest
-from fastapi import HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.testclient import TestClient
 
 # Ensure required environment variables are present for module imports.
 os.environ.setdefault("SECRET_KEY", "test")
@@ -11,8 +14,12 @@ os.environ.setdefault(
     "DATABASE_URL", "postgresql+asyncpg://user:pass@localhost:5432/db"
 )
 
+from app.auth.enforcement_matrix import ENFORCEMENT_MATRIX
 from app.auth.helpers import require_any_permission, require_permission
+from app.dependencies import get_current_role, get_current_user, get_db
 from app.errors import PermissionError
+from app.routers import favorites, users, watch
+from app.routers.collections import router as collections_router
 
 
 def make_request(path: str = "/favorites") -> Request:
@@ -45,3 +52,163 @@ def test_require_permission_denies_and_logs(caplog: pytest.LogCaptureFixture) ->
 def test_require_any_permission_allows_when_one_matches() -> None:
     checker = require_any_permission(["write:profile", "read:content"])
     asyncio.run(checker(role="user", request=make_request("/favorites")))
+
+
+class DummySession:
+    async def commit(self) -> None:  # pragma: no cover - stub
+        return None
+
+    async def rollback(self) -> None:  # pragma: no cover - stub
+        return None
+
+    async def refresh(self, _obj: object) -> None:  # pragma: no cover - stub
+        return None
+
+
+class DummyUser:
+    def __init__(self) -> None:
+        self.id = uuid.uuid4()
+        self.email = "user@example.com"
+        self.avatar = None
+        self.is_active = True
+        self.created_at = datetime.now()
+
+
+class DummyFavorite:
+    def __init__(self, anime_id: uuid.UUID) -> None:
+        self.id = uuid.uuid4()
+        self.anime_id = anime_id
+        self.created_at = datetime.now()
+
+
+class DummyProgress:
+    def __init__(
+        self,
+        anime_id: uuid.UUID,
+        episode: int,
+        position_seconds: int | None,
+        progress_percent: float | None,
+    ) -> None:
+        now = datetime.now()
+        self.id = uuid.uuid4()
+        self.anime_id = anime_id
+        self.episode = episode
+        self.position_seconds = position_seconds
+        self.progress_percent = progress_percent
+        self.created_at = now
+        self.last_watched_at = now
+
+
+def make_client(role: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    async def fake_add_favorite_use_case(
+        _db: DummySession, user_id: uuid.UUID, anime_id: uuid.UUID
+    ) -> DummyFavorite:
+        return DummyFavorite(anime_id)
+
+    async def fake_remove_favorite_use_case(
+        _db: DummySession, user_id: uuid.UUID, anime_id: uuid.UUID
+    ) -> None:
+        pass
+
+    async def fake_update_progress(
+        _db: DummySession,
+        user_id: uuid.UUID,
+        anime_id: uuid.UUID,
+        episode: int,
+        position_seconds: int | None = None,
+        progress_percent: float | None = None,
+    ) -> DummyProgress:
+        return DummyProgress(anime_id, episode, position_seconds, progress_percent)
+
+    monkeypatch.setattr(favorites, "add_favorite_use_case", fake_add_favorite_use_case)
+    monkeypatch.setattr(favorites, "remove_favorite_use_case", fake_remove_favorite_use_case)
+    monkeypatch.setattr(watch, "update_progress", fake_update_progress)
+
+    app = FastAPI()
+    app.include_router(favorites.router)
+    app.include_router(watch.router)
+    app.include_router(users.router)
+    app.include_router(collections_router)
+
+    dummy_user = DummyUser()
+
+    async def override_role() -> str:
+        return role
+
+    async def override_user() -> DummyUser:
+        return dummy_user
+
+    async def override_db():
+        yield DummySession()
+
+    app.dependency_overrides[get_current_role] = override_role
+    app.dependency_overrides[get_current_user] = override_user
+    app.dependency_overrides[get_db] = override_db
+
+    return TestClient(app)
+
+
+def test_delete_favorite_enforced_allows_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = make_client("user", monkeypatch)
+    response = client.delete(f"/favorites/{uuid.uuid4()}")
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+
+def test_delete_favorite_enforced_denies_guest(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = make_client("guest", monkeypatch)
+    response = client.delete(f"/favorites/{uuid.uuid4()}")
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_watch_progress_enforced_allows_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = make_client("user", monkeypatch)
+    payload = {
+        "anime_id": str(uuid.uuid4()),
+        "episode": 1,
+        "position_seconds": 30,
+    }
+    response = client.post("/watch/progress", json=payload)
+    assert response.status_code == status.HTTP_200_OK
+    body = response.json()
+    assert body["anime_id"] == payload["anime_id"]
+    assert body["episode"] == payload["episode"]
+
+
+def test_watch_progress_enforced_denies_guest(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = make_client("guest", monkeypatch)
+    payload = {
+        "anime_id": str(uuid.uuid4()),
+        "episode": 1,
+        "position_seconds": 30,
+    }
+    response = client.post("/watch/progress", json=payload)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_update_profile_enforced_allows_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = make_client("user", monkeypatch)
+    response = client.patch("/users/me", files={})
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["email"] == "user@example.com"
+
+
+def test_update_profile_enforced_denies_guest(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = make_client("guest", monkeypatch)
+    response = client.patch("/users/me", files={})
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_enforcement_matrix_scope_locked() -> None:
+    expected_paths = {
+        ("POST", "/favorites"),
+        ("DELETE", "/favorites/{anime_id}"),
+        ("POST", "/watch/progress"),
+        ("PATCH", "/users/me"),
+    }
+    assert set(ENFORCEMENT_MATRIX.keys()) == expected_paths
+
+
+def test_unlisted_endpoint_not_enforced(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = make_client("guest", monkeypatch)
+    response = client.post("/collections")
+    assert response.status_code == status.HTTP_201_CREATED
