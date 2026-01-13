@@ -1,3 +1,4 @@
+import hashlib
 import time
 from collections import defaultdict
 from typing import DefaultDict, List
@@ -41,9 +42,14 @@ class SoftRateLimiter:
 
 
 def make_key(scope: str, ip: str, identifier: str) -> str:
-    ip_component = ip or f"unknown-ip-{identifier or 'na'}"
-    identifier_component = identifier or f"unknown-id-{ip or 'na'}"
-    return f"{scope}:{ip_component}:{identifier_component}"
+    if not identifier:
+        raise ValueError("identifier is required for rate limiting")
+    if ip:
+        ip_component = ip
+    else:
+        hashed_identifier = hashlib.sha256(identifier.encode()).hexdigest()[:8]
+        ip_component = f"unknown-ip-{hashed_identifier}"
+    return f"{scope}:{ip_component}:{identifier}"
 
 
 auth_rate_limiter = SoftRateLimiter(
