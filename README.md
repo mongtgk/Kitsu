@@ -21,6 +21,10 @@
   ALLOWED_ORIGINS=http://localhost:3000 \
   python -m uvicorn app.main:app
   ```
+  
+  Примечание: `ALLOWED_ORIGINS` поддерживает оба формата:
+  - CSV: `http://localhost:3000,http://localhost:8080`
+  - JSON: `["http://localhost:3000","http://localhost:8080"]`
 
 ## Docker
 
