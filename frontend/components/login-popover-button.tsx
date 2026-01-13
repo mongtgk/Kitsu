@@ -22,6 +22,32 @@ function LoginPopoverButton() {
   });
   const [tabValue, setTabValue] = useState<"login" | "signup">("login");
 
+  const resolveTokens = (data: any) => ({
+    accessToken:
+      (data as any)?.access_token ||
+      (data as any)?.accessToken ||
+      (data as any)?.token,
+    refreshToken:
+      (data as any)?.refresh_token || (data as any)?.refreshToken,
+  });
+
+  const fetchProfile = async (
+    accessToken: string,
+    fallbackEmail: string,
+  ): Promise<{ email: string; id?: string }> => {
+    try {
+      const profile = await api.get("/users/me", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      return {
+        email: (profile.data as any)?.email || fallbackEmail,
+        id: (profile.data as any)?.id,
+      };
+    } catch {
+      return { email: fallbackEmail, id: undefined };
+    }
+  };
+
   const loginWithEmail = async () => {
     try {
       if (formData.email === "" || formData.password === "") {
@@ -36,24 +62,14 @@ function LoginPopoverButton() {
         password: formData.password,
       });
 
-      const tokens = {
-        accessToken:
-          (data as any).access_token ||
-          (data as any).accessToken ||
-          (data as any).token,
-        refreshToken:
-          (data as any).refresh_token || (data as any).refreshToken,
-      };
-
-      let userEmail = formData.email;
-      let userId: string | undefined;
-      try {
-        const profile = await api.get("/users/me");
-        userEmail = (profile.data as any)?.email || userEmail;
-        userId = (profile.data as any)?.id;
-      } catch {
-        // ignore profile errors and fallback to form values
+      const tokens = resolveTokens(data);
+      if (!tokens.accessToken || !tokens.refreshToken) {
+        throw new Error("Missing tokens in auth response");
       }
+
+      const profile = await fetchProfile(tokens.accessToken, formData.email);
+      const userEmail = profile.email;
+      const userId = profile.id;
 
       toast.success("Login successful", { style: { background: "green" } });
       clearForm();
@@ -65,8 +81,8 @@ function LoginPopoverButton() {
         collectionId: "",
         collectionName: "",
         autoSkip: false,
-        accessToken: tokens.accessToken || "",
-        refreshToken: tokens.refreshToken || "",
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
       });
     } catch (e) {
       console.error("Login error:", e);
@@ -100,26 +116,16 @@ function LoginPopoverButton() {
       toast.success("Account created successfully. You are now logged in.", {
         style: { background: "green" },
       });
-      const tokens = {
-        accessToken:
-          (data as any).access_token ||
-          (data as any).accessToken ||
-          (data as any).token,
-        refreshToken:
-          (data as any).refresh_token || (data as any).refreshToken,
-      };
-
-      let userEmail = formData.email;
-      let userId: string | undefined;
-      try {
-        const profile = await api.get("/users/me");
-        userEmail = (profile.data as any)?.email || userEmail;
-        userId = (profile.data as any)?.id;
-      } catch {
-        // ignore profile errors and fallback
+      const tokens = resolveTokens(data);
+      if (!tokens.accessToken || !tokens.refreshToken) {
+        throw new Error("Missing tokens in auth response");
       }
 
-       setAuth({
+      const profile = await fetchProfile(tokens.accessToken, formData.email);
+      const userEmail = profile.email;
+      const userId = profile.id;
+
+      setAuth({
         id: userId,
         email: userEmail,
         username: userEmail?.split("@")[0],
@@ -127,8 +133,8 @@ function LoginPopoverButton() {
         collectionId: "",
         collectionName: "",
         autoSkip: false,
-        accessToken: tokens.accessToken || "",
-        refreshToken: tokens.refreshToken || "",
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
       });
       clearForm();
       setTabValue("login");

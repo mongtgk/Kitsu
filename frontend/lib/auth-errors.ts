@@ -123,6 +123,11 @@ export const handleAuthError = (error: unknown): never => {
     throw normalizedError;
   }
 
+  if (normalizedError.status === 403) {
+    handleAuthFailure();
+    throw normalizedError;
+  }
+
   // Network or unknown auth errors are propagated without logout.
   throw normalizedError;
 };

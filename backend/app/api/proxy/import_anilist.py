@@ -41,8 +41,27 @@ async def import_provider(provider: str, payload: dict[str, Any]) -> dict[str, A
                 continue
             try:
                 suggestions = await fetch_search_suggestions(english_title)
-            except (httpx.HTTPError, ValueError, AttributeError):
-                continue
+            except httpx.HTTPStatusError as exc:
+                upstream_status = exc.response.status_code
+                if 500 <= upstream_status < 600:
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail="Upstream service failed",
+                    ) from exc
+                raise HTTPException(
+                    status_code=upstream_status,
+                    detail="Upstream request was rejected",
+                ) from exc
+            except httpx.HTTPError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Failed to contact upstream service",
+                ) from exc
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Failed to parse upstream response",
+                ) from exc
             suggestions_list = suggestions.get("suggestions") or []
             if not suggestions_list:
                 continue
