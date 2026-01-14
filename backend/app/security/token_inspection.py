@@ -4,15 +4,8 @@ from typing import Any, Dict
 import jwt
 
 from ..config import settings
+from ..errors.security import ExpiredTokenError, InvalidTokenError
 from ..utils.security import hash_refresh_token
-
-
-class InvalidTokenError(Exception):
-    """Raised when a token cannot be parsed or is malformed."""
-
-
-class ExpiredTokenError(Exception):
-    """Raised when a token has expired."""
 
 
 def _parse_token_payload(token: str) -> Dict[str, Any]:

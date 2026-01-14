@@ -13,7 +13,8 @@ os.environ.setdefault(
 )
 
 from app.dependencies import get_db  # noqa: E402
-from app.errors import AppError, AuthError, error_payload  # noqa: E402
+from app.errors import AppError, AuthenticationError, RateLimitExceeded, error_payload  # noqa: E402
+from app.transport.error_mapper import map_exception  # noqa: E402
 from app.routers.auth import router  # noqa: E402
 from app.use_cases.auth.register_user import AuthTokens  # noqa: E402
 from app.application.auth_rate_limit import (  # noqa: E402
@@ -69,12 +70,36 @@ def make_app(
             content=error_payload(exc.code, exc.message, exc.details),
         )
 
-    return TestClient(app)
+    @app.exception_handler(AuthenticationError)
+    async def handle_authentication_error(_request, exc: AuthenticationError):
+        app_error = map_exception(exc)
+        return JSONResponse(
+            status_code=app_error.status_code,
+            content=error_payload(app_error.code, app_error.message, app_error.details),
+        )
+
+    @app.exception_handler(RateLimitExceeded)
+    async def handle_rate_limit_error(_request, exc: RateLimitExceeded):
+        app_error = map_exception(exc)
+        return JSONResponse(
+            status_code=app_error.status_code,
+            content=error_payload(app_error.code, app_error.message, app_error.details),
+        )
+
+    @app.exception_handler(Exception)
+    async def handle_other_errors(_request, exc: Exception):
+        app_error = map_exception(exc)
+        return JSONResponse(
+            status_code=app_error.status_code,
+            content=error_payload(app_error.code, app_error.message, app_error.details),
+        )
+
+    return TestClient(app, raise_server_exceptions=False)
 
 
 def test_login_rate_limit_exceeded(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def failing_login(_db, _email, _password):
-        raise AuthError()
+    async def failing_login(_user_repo, _token_repo, _email, _password):
+        raise AuthenticationError()
 
     client = make_app(monkeypatch, login_handler=failing_login)
     payload = {"email": "user@example.com", "password": "bad-password"}
@@ -94,10 +119,10 @@ def test_login_success_resets_limit(monkeypatch: pytest.MonkeyPatch) -> None:
         ["fail"] * 2 + ["success"] + ["fail"] * (AUTH_RATE_LIMIT_MAX_ATTEMPTS + 1)
     )
 
-    async def login_handler(_db, _email, _password):
+    async def login_handler(_user_repo, _token_repo, _email, _password):
         result = next(outcomes)
         if result == "fail":
-            raise AuthError()
+            raise AuthenticationError()
         return AuthTokens(access_token="a", refresh_token="r")
 
     client = make_app(monkeypatch, login_handler=login_handler)
@@ -120,8 +145,8 @@ def test_login_success_resets_limit(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_refresh_rate_limit_exceeded(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def failing_refresh(_db, _token_hash):
-        raise AuthError()
+    async def failing_refresh(_token_repo, _token_hash):
+        raise AuthenticationError()
 
     client = make_app(monkeypatch, refresh_handler=failing_refresh)
     payload = {"refresh_token": "bad-refresh-token"}

@@ -20,17 +20,8 @@ from sqlalchemy.exc import (
 from .background import default_job_runner
 from .config import settings
 from .database import engine
-from .errors import (
-    AppError,
-    AuthError,
-    ConflictError,
-    InternalError,
-    NotFoundError,
-    PermissionError,
-    ValidationError,
-    error_payload,
-    resolve_error_code,
-)
+from .errors import AppError, error_payload
+from .transport.error_mapper import map_exception
 from .api import router as api_router
 from .routers import (
     anime,
@@ -156,15 +147,6 @@ for router in routers:
 
 app.include_router(search.router, tags=["Search"])
 
-SAFE_HTTP_MESSAGES: dict[int, str] = {
-    status.HTTP_400_BAD_REQUEST: ValidationError.message,
-    status.HTTP_401_UNAUTHORIZED: AuthError.message,
-    status.HTTP_403_FORBIDDEN: PermissionError.message,
-    status.HTTP_404_NOT_FOUND: NotFoundError.message,
-    status.HTTP_409_CONFLICT: ConflictError.message,
-    status.HTTP_422_UNPROCESSABLE_ENTITY: ValidationError.message,
-}
-
 
 def _log_error(request: Request, status_code: int, code: str, message: str, exc: Exception | None = None) -> None:
     request_id = request.headers.get("x-request-id")
@@ -186,17 +168,12 @@ async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
 
 @app.exception_handler(HTTPException)
 async def handle_http_exception(request: Request, exc: HTTPException) -> JSONResponse:
-    safe_message = SAFE_HTTP_MESSAGES.get(
-        exc.status_code,
-        InternalError.message if exc.status_code >= status.HTTP_500_INTERNAL_SERVER_ERROR else "Request failed",
-    )
-    detail = exc.detail if isinstance(exc.detail, str) else ""
-    log_message = detail.strip() or safe_message
-    code = resolve_error_code(exc.status_code)
-    _log_error(request, exc.status_code, code, log_message)
+    message = exc.detail if isinstance(exc.detail, str) else "Request failed"
+    app_error = AppError(message=message, code="HTTP_ERROR", status_code=exc.status_code)
+    _log_error(request, app_error.status_code, app_error.code, app_error.message)
     return JSONResponse(
-        status_code=exc.status_code,
-        content=error_payload(code, safe_message),
+        status_code=app_error.status_code,
+        content=error_payload(app_error.code, app_error.message),
     )
 
 
@@ -205,50 +182,71 @@ async def handle_request_validation_error(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
     message = "Request validation failed"
-    _log_error(request, status.HTTP_422_UNPROCESSABLE_ENTITY, ValidationError.code, message, exc)
+    code = "VALIDATION_ERROR"
+    _log_error(request, status.HTTP_422_UNPROCESSABLE_ENTITY, code, message, exc)
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=error_payload(ValidationError.code, message),
+        content=error_payload(code, message),
     )
 
 
 @app.exception_handler(ValueError)
 async def handle_value_error(request: Request, exc: ValueError) -> JSONResponse:
     log_message = str(exc).strip() or "Invalid request"
-    _log_error(request, status.HTTP_400_BAD_REQUEST, ValidationError.code, log_message, exc)
-    return JSONResponse(
+    app_error = AppError(
+        message="Invalid request",
+        code="VALIDATION_ERROR",
         status_code=status.HTTP_400_BAD_REQUEST,
-        content=error_payload(ValidationError.code, "Invalid request"),
+    )
+    _log_error(request, app_error.status_code, app_error.code, log_message, exc)
+    return JSONResponse(
+        status_code=app_error.status_code,
+        content=error_payload(app_error.code, app_error.message),
     )
 
 
 @app.exception_handler(IntegrityError)
 async def handle_integrity_error(request: Request, exc: IntegrityError) -> JSONResponse:
     message = "Request could not be completed due to a conflict"
-    _log_error(request, status.HTTP_409_CONFLICT, ConflictError.code, message, exc)
-    return JSONResponse(
+    app_error = AppError(
+        message=message,
+        code="CONFLICT_ERROR",
         status_code=status.HTTP_409_CONFLICT,
-        content=error_payload(ConflictError.code, message),
+    )
+    _log_error(request, app_error.status_code, app_error.code, message, exc)
+    return JSONResponse(
+        status_code=app_error.status_code,
+        content=error_payload(app_error.code, message),
     )
 
 
 @app.exception_handler(ProgrammingError)
 async def handle_programming_error(request: Request, exc: ProgrammingError) -> JSONResponse:
     message = "Database not initialized. Ensure migrations are applied."
-    _log_error(request, status.HTTP_500_INTERNAL_SERVER_ERROR, InternalError.code, message, exc)
-    return JSONResponse(
+    app_error = AppError(
+        message=message,
+        code="INTERNAL_ERROR",
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=error_payload(InternalError.code, message),
+    )
+    _log_error(request, app_error.status_code, app_error.code, message, exc)
+    return JSONResponse(
+        status_code=app_error.status_code,
+        content=error_payload(app_error.code, message),
     )
 
 
 @app.exception_handler(NoResultFound)
 async def handle_no_result_found(request: Request, exc: NoResultFound) -> JSONResponse:
     message = "Requested resource was not found"
-    _log_error(request, status.HTTP_404_NOT_FOUND, NotFoundError.code, message, exc)
-    return JSONResponse(
+    app_error = AppError(
+        message=message,
+        code="NOT_FOUND",
         status_code=status.HTTP_404_NOT_FOUND,
-        content=error_payload(NotFoundError.code, message),
+    )
+    _log_error(request, app_error.status_code, app_error.code, message, exc)
+    return JSONResponse(
+        status_code=app_error.status_code,
+        content=error_payload(app_error.code, message),
     )
 
 
@@ -257,10 +255,15 @@ async def handle_multiple_results_found(
     request: Request, exc: MultipleResultsFound
 ) -> JSONResponse:
     message = "Multiple resources found where one expected"
-    _log_error(request, status.HTTP_409_CONFLICT, ConflictError.code, message, exc)
-    return JSONResponse(
+    app_error = AppError(
+        message=message,
+        code="CONFLICT_ERROR",
         status_code=status.HTTP_409_CONFLICT,
-        content=error_payload(ConflictError.code, message),
+    )
+    _log_error(request, app_error.status_code, app_error.code, message, exc)
+    return JSONResponse(
+        status_code=app_error.status_code,
+        content=error_payload(app_error.code, message),
     )
 
 
@@ -268,16 +271,11 @@ async def handle_multiple_results_found(
 async def handle_unhandled_exception(
     request: Request, exc: Exception
 ) -> JSONResponse:
-    _log_error(
-        request,
-        status.HTTP_500_INTERNAL_SERVER_ERROR,
-        InternalError.code,
-        InternalError.message,
-        exc,
-    )
+    app_error = map_exception(exc)
+    _log_error(request, app_error.status_code, app_error.code, app_error.message, exc)
     return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=error_payload(InternalError.code, InternalError.message),
+        status_code=app_error.status_code,
+        content=error_payload(app_error.code, app_error.message),
     )
 
 

@@ -1,5 +1,3 @@
-from fastapi import status
-
 from ...application.auth_rate_limit import (
     RATE_LIMIT_MESSAGE,
     RateLimitExceededError,
@@ -9,7 +7,7 @@ from ...application.auth_rate_limit import (
 )
 from ...domain.ports.token import TokenRepository
 from ...domain.ports.user import UserRepository
-from ...errors import AuthError, PermissionError
+from ...errors import AuthenticationError, PermissionDenied, RateLimitExceeded
 from ...utils.security import verify_password
 from .register_user import AuthTokens, issue_tokens
 
@@ -19,7 +17,7 @@ async def _authenticate_user(
 ) -> AuthTokens:
     user = await user_repo.get_by_email(email)
     if user is None or not verify_password(password, user.password_hash):
-        raise AuthError()
+        raise AuthenticationError()
     return await issue_tokens(token_repo, user.id)
 
 
@@ -34,15 +32,11 @@ async def login_user(
     try:
         key = check_login_rate_limit(email, client_ip)
     except RateLimitExceededError:
-        raise AppError(
-            RATE_LIMIT_MESSAGE,
-            code="RATE_LIMITED",
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-        ) from None
+        raise RateLimitExceeded(RATE_LIMIT_MESSAGE) from None
 
     try:
         tokens = await _authenticate_user(user_repo, token_repo, email, password)
-    except (AuthError, PermissionError):
+    except (AuthenticationError, PermissionDenied):
         record_login_failure(key)
         raise
     reset_login_limit(key)

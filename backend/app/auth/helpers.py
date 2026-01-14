@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException, Request, status
 
 from . import rbac
 from ..dependencies import get_current_role
-from ..errors import PermissionError
+from ..errors import PermissionDenied
 
 logger = logging.getLogger("kitsu.rbac")
 
@@ -43,7 +43,7 @@ def require_permission(permission: rbac.Permission):
             return
         _log_deny(request, role, (permission,))
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=PermissionError.message
+            status_code=status.HTTP_403_FORBIDDEN, detail=PermissionDenied.message
         )
 
     return dependency
@@ -61,7 +61,7 @@ def require_any_permission(permissions: Iterable[rbac.Permission]):
             return
         _log_deny(request, role, required_permissions)
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=PermissionError.message
+            status_code=status.HTTP_403_FORBIDDEN, detail=PermissionDenied.message
         )
 
     return dependency

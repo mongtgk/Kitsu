@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from ...application.repositories import RepositoryFactory, RepositoryProvider
 from ...background import Job, default_job_runner
-from ...errors import NotFoundError, ValidationError
+from ...errors import EntityNotFound, InvalidState
 from ...schemas.watch import WatchProgressRead
 
 
@@ -11,13 +11,13 @@ def _validate_update_request(
     episode: int, position_seconds: int | None, progress_percent: float | None
 ) -> None:
     if episode <= 0:
-        raise ValidationError("Episode number must be positive")
+        raise InvalidState("Episode number must be positive")
     if position_seconds is None and progress_percent is None:
-        raise ValidationError("Either position_seconds or progress_percent must be provided")
+        raise InvalidState("Either position_seconds or progress_percent must be provided")
     if progress_percent is not None and not (0 <= progress_percent <= 100):
-        raise ValidationError("Progress percent must be between 0 and 100")
+        raise InvalidState("Progress percent must be between 0 and 100")
     if position_seconds is not None and position_seconds < 0:
-        raise ValidationError("Position in seconds must be non-negative")
+        raise InvalidState("Position in seconds must be non-negative")
 
 
 async def _apply_watch_progress(
@@ -34,7 +34,7 @@ async def _apply_watch_progress(
 ) -> None:
     anime = await repos.anime.get_by_id(anime_id)
     if anime is None:
-        raise NotFoundError("Anime not found")
+        raise EntityNotFound("Anime not found")
 
     await repos.watch_progress.upsert(
         user_id,
@@ -87,7 +87,7 @@ async def update_progress(
 
     anime = await repos.anime.get_by_id(anime_id)
     if anime is None:
-        raise NotFoundError("Anime not found")
+        raise EntityNotFound("Anime not found")
 
     existing_progress = await repos.watch_progress.get(user_id, anime_id)
     now = datetime.now(timezone.utc)

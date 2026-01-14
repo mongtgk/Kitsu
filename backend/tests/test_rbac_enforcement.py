@@ -23,7 +23,7 @@ from app.dependencies import (
     get_repositories,
     get_repositories_factory,
 )
-from app.errors import PermissionError
+from app.errors import PermissionDenied
 from app.routers import favorites, watch
 
 
@@ -49,7 +49,7 @@ def test_require_permission_denies_and_logs(caplog: pytest.LogCaptureFixture) ->
         with pytest.raises(HTTPException) as exc:
             asyncio.run(checker(role="guest", request=make_request("/favorites")))
     assert exc.value.status_code == 403
-    assert PermissionError.message in exc.value.detail
+    assert PermissionDenied.message in exc.value.detail
     assert any("write:profile" in record.getMessage() for record in caplog.records)
     assert any("/favorites" in record.getMessage() for record in caplog.records)
     assert any("GET" in record.getMessage() for record in caplog.records)
@@ -194,7 +194,7 @@ def test_delete_favorite_enforced_denies_guest(monkeypatch: pytest.MonkeyPatch) 
     client = make_client("guest", monkeypatch)
     response = client.delete(f"/favorites/{uuid.uuid4()}")
     assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert response.json()["detail"] == PermissionError.message
+    assert response.json()["detail"] == PermissionDenied.message
 
 
 def test_create_favorite_enforced_allows_user(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -210,7 +210,7 @@ def test_create_favorite_enforced_denies_guest(monkeypatch: pytest.MonkeyPatch) 
     payload = {"anime_id": str(uuid.uuid4())}
     response = client.post("/favorites/", json=payload)
     assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert response.json()["detail"] == PermissionError.message
+    assert response.json()["detail"] == PermissionDenied.message
 
 
 def test_watch_progress_enforced_allows_user(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -236,7 +236,7 @@ def test_watch_progress_enforced_denies_guest(monkeypatch: pytest.MonkeyPatch) -
     }
     response = client.post("/watch/progress", json=payload)
     assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert response.json()["detail"] == PermissionError.message
+    assert response.json()["detail"] == PermissionDenied.message
 def test_enforcement_matrix_scope_locked() -> None:
     expected_paths = {
         ("POST", "/favorites"),

@@ -5,7 +5,7 @@ import uuid
 from ...config import settings
 from ...domain.ports.token import TokenRepository
 from ...domain.ports.user import UserRepository
-from ...errors import ValidationError
+from ...errors import AlreadyExists
 from ...utils.security import (
     create_access_token,
     create_refresh_token,
@@ -36,7 +36,7 @@ async def register_user(
 ) -> AuthTokens:
     existing_user = await user_repo.get_by_email(email)
     if existing_user:
-        raise ValidationError("Email already registered")
+        raise AlreadyExists("Email already registered")
 
     user = await user_repo.add(email=email, password_hash=hash_password(password))
     return await issue_tokens(token_repo, user.id)

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from ...application.repositories import RepositoryFactory, RepositoryProvider
 from ...background import Job, default_job_runner
-from ...errors import ConflictError, NotFoundError
+from ...errors import AlreadyExists, EntityNotFound
 from ...schemas.favorite import FavoriteRead
 
 
@@ -16,7 +16,7 @@ async def _apply_add_favorite(
 ) -> None:
     anime = await repos.anime.get_by_id(anime_id)
     if anime is None:
-        raise NotFoundError("Anime not found")
+        raise EntityNotFound("Anime not found")
 
     existing = await repos.favorites.get(user_id, anime_id)
     if existing is None:
@@ -47,11 +47,11 @@ async def add_favorite(
 ) -> FavoriteRead:
     anime = await repos.anime.get_by_id(anime_id)
     if anime is None:
-        raise NotFoundError("Anime not found")
+        raise EntityNotFound("Anime not found")
 
     existing = await repos.favorites.get(user_id, anime_id)
     if existing:
-        raise ConflictError("Favorite already exists")
+        raise AlreadyExists("Favorite already exists")
 
     favorite_id = uuid.uuid4()
     created_at = datetime.now(timezone.utc)
