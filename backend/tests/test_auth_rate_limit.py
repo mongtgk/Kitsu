@@ -38,15 +38,29 @@ def make_app(
     app = FastAPI()
     app.include_router(router)
 
+    class DummySession:
+        async def rollback(self):
+            return None
+
+        async def commit(self):
+            return None
+
+    dummy_session = DummySession()
+
     async def fake_get_db():
-        yield None
+        yield dummy_session
 
     app.dependency_overrides[get_db] = fake_get_db
 
     if login_handler is not None:
-        monkeypatch.setattr("app.routers.auth.login_user", login_handler)
+        monkeypatch.setattr(
+            "app.use_cases.auth.login_user._authenticate_user", login_handler
+        )
     if refresh_handler is not None:
-        monkeypatch.setattr("app.routers.auth.refresh_session", refresh_handler)
+        monkeypatch.setattr(
+            "app.use_cases.auth.refresh_session._validate_and_issue_tokens",
+            refresh_handler,
+        )
 
     @app.exception_handler(AppError)
     async def handle_app_error(_request, exc: AppError):
@@ -106,7 +120,7 @@ def test_login_success_resets_limit(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_refresh_rate_limit_exceeded(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def failing_refresh(_db, _token):
+    async def failing_refresh(_db, _token_hash):
         raise AuthError()
 
     client = make_app(monkeypatch, refresh_handler=failing_refresh)

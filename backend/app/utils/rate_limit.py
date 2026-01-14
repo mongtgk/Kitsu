@@ -6,6 +6,7 @@ from typing import DefaultDict, List
 
 AUTH_RATE_LIMIT_MAX_ATTEMPTS = 5
 AUTH_RATE_LIMIT_WINDOW_SECONDS = 60
+RATE_LIMIT_MESSAGE = "Too many attempts, try again later"
 
 
 class SoftRateLimiter:
