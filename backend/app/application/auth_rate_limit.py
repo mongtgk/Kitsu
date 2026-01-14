@@ -6,6 +6,8 @@ from typing import DefaultDict, List
 AUTH_RATE_LIMIT_MAX_ATTEMPTS = 5
 AUTH_RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_MESSAGE = "Too many attempts, try again later"
+IDENTIFIER_HASH_LENGTH = 32
+IP_FALLBACK_LENGTH = 8
 
 
 class RateLimitExceededError(Exception):
@@ -49,8 +51,8 @@ def _make_key(scope: str, identifier: str, client_ip: str | None) -> str:
     if not identifier:
         raise ValueError("identifier is required for rate limiting")
     identifier_hash = hashlib.sha256(identifier.encode()).hexdigest()
-    identifier_component = identifier_hash[:32]
-    ip_component = client_ip or f"unknown-ip-{identifier_hash[:8]}"
+    identifier_component = identifier_hash[:IDENTIFIER_HASH_LENGTH]
+    ip_component = client_ip or f"unknown-ip-{identifier_hash[:IP_FALLBACK_LENGTH]}"
     return f"{scope}:{ip_component}:{identifier_component}"
 
 

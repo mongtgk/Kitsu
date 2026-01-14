@@ -27,14 +27,6 @@ def parse_token_payload(token: str) -> Dict[str, Any]:
 def validate_access_token(token: str) -> Dict[str, Any]:
     payload = parse_token_payload(token)
 
-    exp = payload.get("exp")
-    if exp is None:
-        raise InvalidTokenError()
-    # Ensure expiration is still valid if exp is a numeric timestamp
-    if isinstance(exp, (int, float)):
-        if datetime.fromtimestamp(exp, tz=timezone.utc) <= datetime.now(timezone.utc):
-            raise ExpiredTokenError()
-
     subject = payload.get("sub")
     if not isinstance(subject, str):
         raise InvalidTokenError()
