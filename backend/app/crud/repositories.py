@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..domain.entities import Anime as DomainAnime
 from ..domain.entities import Favorite as DomainFavorite
@@ -14,21 +15,12 @@ from ..domain.ports.favorite import FavoriteRepository
 from ..domain.ports.token import TokenRepository
 from ..domain.ports.user import UserRepository
 from ..domain.ports.watch_progress import WatchProgressRepository
+from ..models.user import User
 from . import anime as anime_crud
 from . import favorite as favorite_crud
 from . import refresh_token as token_crud
 from . import user as user_crud
 from . import watch_progress as watch_crud
-from .favorite import add_favorite as crud_add_favorite
-from .favorite import get_favorite as crud_get_favorite
-from .favorite import list_favorites as crud_list_favorites
-from .favorite import remove_favorite as crud_remove_favorite
-from .watch_progress import (
-    create_watch_progress as crud_create_watch_progress,
-    get_watch_progress as crud_get_watch_progress,
-    list_watch_progress as crud_list_watch_progress,
-    update_watch_progress as crud_update_watch_progress,
-)
 
 
 def _to_domain_user(model: Any | None) -> DomainUser | None:
@@ -38,8 +30,8 @@ def _to_domain_user(model: Any | None) -> DomainUser | None:
         id=model.id,
         email=model.email,
         password_hash=model.password_hash,
-        is_active=getattr(model, "is_active", True),
-        created_at=getattr(model, "created_at", None),
+        is_active=model.is_active,
+        created_at=model.created_at,
     )
 
 
@@ -95,17 +87,17 @@ class SqlAlchemyUserRepository(UserRepository):
         return _to_domain_user(user)
 
     async def add(self, email: str, password_hash: str) -> DomainUser:
-        from ..models.user import User
-
         user = User(email=email, password_hash=password_hash)
         try:
             self.session.add(user)
             await self.session.flush()
             await self.session.commit()
-        except Exception:
+        except SQLAlchemyError:
             await self.session.rollback()
             raise
-        return _to_domain_user(user)  # type: ignore[arg-type]
+        domain_user = _to_domain_user(user)
+        assert domain_user is not None
+        return domain_user
 
 
 class SqlAlchemyTokenRepository(TokenRepository):
@@ -120,8 +112,10 @@ class SqlAlchemyTokenRepository(TokenRepository):
                 self.session, user_id, token_hash, expires_at
             )
             await self.session.commit()
-            return _to_domain_refresh_token(token)  # type: ignore[arg-type]
-        except Exception:
+            domain_token = _to_domain_refresh_token(token)
+            assert domain_token is not None
+            return domain_token
+        except SQLAlchemyError:
             await self.session.rollback()
             raise
 
@@ -137,7 +131,7 @@ class SqlAlchemyTokenRepository(TokenRepository):
         try:
             await token_crud.revoke_refresh_token(self.session, user_id)
             await self.session.commit()
-        except Exception:
+        except SQLAlchemyError:
             await self.session.rollback()
             raise
 
@@ -156,7 +150,7 @@ class SqlAlchemyFavoriteRepository(FavoriteRepository):
         self.session = session
 
     async def get(self, user_id: uuid.UUID, anime_id: uuid.UUID) -> DomainFavorite | None:
-        favorite = await crud_get_favorite(self.session, user_id, anime_id)
+        favorite = await favorite_crud.get_favorite(self.session, user_id, anime_id)
         return _to_domain_favorite(favorite)
 
     async def add(
@@ -168,7 +162,7 @@ class SqlAlchemyFavoriteRepository(FavoriteRepository):
         created_at: datetime | None = None,
     ) -> DomainFavorite:
         try:
-            favorite = await crud_add_favorite(
+            favorite = await favorite_crud.add_favorite(
                 self.session,
                 user_id,
                 anime_id,
@@ -176,25 +170,32 @@ class SqlAlchemyFavoriteRepository(FavoriteRepository):
                 created_at=created_at,
             )
             await self.session.commit()
-            return _to_domain_favorite(favorite)  # type: ignore[arg-type]
-        except Exception:
+            domain_favorite = _to_domain_favorite(favorite)
+            assert domain_favorite is not None
+            return domain_favorite
+        except SQLAlchemyError:
             await self.session.rollback()
             raise
 
     async def remove(self, user_id: uuid.UUID, anime_id: uuid.UUID) -> bool:
         try:
-            deleted = await crud_remove_favorite(self.session, user_id, anime_id)
+            deleted = await favorite_crud.remove_favorite(self.session, user_id, anime_id)
             await self.session.commit()
             return deleted
-        except Exception:
+        except SQLAlchemyError:
             await self.session.rollback()
             raise
 
     async def list_for_user(
         self, user_id: uuid.UUID, limit: int, offset: int
     ) -> list[DomainFavorite]:
-        favorites = await crud_list_favorites(self.session, user_id, limit, offset)
-        return [fav for fav in (_to_domain_favorite(f) for f in favorites) if fav]
+        favorites = await favorite_crud.list_favorites(self.session, user_id, limit, offset)
+        result: list[DomainFavorite] = []
+        for favorite in favorites:
+            domain_favorite = _to_domain_favorite(favorite)
+            if domain_favorite is not None:
+                result.append(domain_favorite)
+        return result
 
 
 class SqlAlchemyWatchProgressRepository(WatchProgressRepository):
@@ -202,16 +203,17 @@ class SqlAlchemyWatchProgressRepository(WatchProgressRepository):
         self.session = session
 
     async def get(self, user_id: uuid.UUID, anime_id: uuid.UUID) -> DomainWatchProgress | None:
-        progress = await crud_get_watch_progress(self.session, user_id, anime_id)
+        progress = await watch_crud.get_watch_progress(self.session, user_id, anime_id)
         return _to_domain_watch_progress(progress)
 
     async def list_for_user(self, user_id: uuid.UUID, limit: int) -> list[DomainWatchProgress]:
-        progress_list = await crud_list_watch_progress(self.session, user_id, limit)
-        return [
-            progress
-            for progress in (_to_domain_watch_progress(item) for item in progress_list)
-            if progress
-        ]
+        progress_list = await watch_crud.list_watch_progress(self.session, user_id, limit)
+        result: list[DomainWatchProgress] = []
+        for progress_item in progress_list:
+            domain_progress = _to_domain_watch_progress(progress_item)
+            if domain_progress is not None:
+                result.append(domain_progress)
+        return result
 
     async def upsert(
         self,
@@ -225,10 +227,11 @@ class SqlAlchemyWatchProgressRepository(WatchProgressRepository):
         created_at: datetime,
         last_watched_at: datetime,
     ) -> DomainWatchProgress:
+        result = None
         try:
-            existing = await crud_get_watch_progress(self.session, user_id, anime_id)
+            existing = await watch_crud.get_watch_progress(self.session, user_id, anime_id)
             if existing:
-                updated = await crud_update_watch_progress(
+                result = await watch_crud.update_watch_progress(
                     self.session,
                     existing,
                     episode,
@@ -236,23 +239,28 @@ class SqlAlchemyWatchProgressRepository(WatchProgressRepository):
                     progress_percent,
                     last_watched_at=last_watched_at,
                 )
-                await self.session.commit()
-                return _to_domain_watch_progress(updated)  # type: ignore[arg-type]
-
-            created = await crud_create_watch_progress(
-                self.session,
-                user_id,
-                anime_id,
-                episode,
-                position_seconds,
-                progress_percent,
-                progress_id=progress_id,
-                created_at=created_at,
-                last_watched_at=last_watched_at,
-            )
-            await self.session.commit()
-            return _to_domain_watch_progress(created)  # type: ignore[arg-type]
-        except Exception:
+            else:
+                result = await watch_crud.create_watch_progress(
+                    self.session,
+                    user_id,
+                    anime_id,
+                    episode,
+                    position_seconds,
+                    progress_percent,
+                    progress_id=progress_id,
+                    created_at=created_at,
+                    last_watched_at=last_watched_at,
+                )
+        except SQLAlchemyError:
             await self.session.rollback()
             raise
 
+        try:
+            await self.session.commit()
+        except SQLAlchemyError:
+            await self.session.rollback()
+            raise
+
+        domain_progress = _to_domain_watch_progress(result)
+        assert domain_progress is not None
+        return domain_progress

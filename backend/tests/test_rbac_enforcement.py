@@ -117,11 +117,13 @@ class DummyProgress:
 
 
 def make_client(role: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    dummy_repos = type(
-        "DummyRepos",
-        (),
-        {"favorites": object(), "anime": object(), "watch_progress": object()},
-    )()
+    class DummyRepos:
+        def __init__(self) -> None:
+            self.favorites = object()
+            self.anime = object()
+            self.watch_progress = object()
+
+    dummy_repos = DummyRepos()
 
     async def fake_add_favorite_use_case(
         _repos, _repo_factory, user_id: uuid.UUID, anime_id: uuid.UUID
@@ -170,9 +172,14 @@ def make_client(role: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     app.dependency_overrides[get_current_user] = override_user
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[get_repositories] = lambda: dummy_repos
-    app.dependency_overrides[get_repositories_factory] = (  # type: ignore[return-value]
-        lambda: (lambda: DummyRepoFactory(dummy_repos))
-    )
+
+    def override_repo_factory():
+        def factory():
+            return DummyRepoFactory(dummy_repos)
+
+        return factory
+
+    app.dependency_overrides[get_repositories_factory] = override_repo_factory
 
     return TestClient(app)
 

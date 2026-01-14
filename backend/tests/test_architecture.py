@@ -20,7 +20,11 @@ def test_use_cases_do_not_import_crud() -> None:
     use_cases_dir = PROJECT_ROOT / "use_cases"
     for file_path in use_cases_dir.rglob("*.py"):
         imports = _collect_imports(file_path)
-        forbidden = [imp for imp in imports if "app.crud" in imp or imp.startswith("...crud")]
+        forbidden = [
+            imp
+            for imp in imports
+            if imp.startswith("app.crud") or imp.startswith(".crud") or imp.startswith("..crud")
+        ]
         assert not forbidden, f"{file_path} imports infrastructure modules: {forbidden}"
 
 
@@ -38,6 +42,7 @@ def test_domain_has_no_infrastructure_dependencies() -> None:
     for file_path in domain_dir.rglob("*.py"):
         imports = _collect_imports(file_path)
         offending = [
-            imp for imp in imports if imp.startswith(forbidden_prefixes)
+            imp for imp in imports
+            if any(imp.startswith(prefix) for prefix in forbidden_prefixes)
         ]
         assert not offending, f"{file_path} depends on infrastructure: {offending}"

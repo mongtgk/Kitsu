@@ -1,6 +1,7 @@
 import asyncio
 import importlib
 import uuid
+from datetime import datetime
 
 import pytest
 
@@ -8,6 +9,20 @@ from app.background.runner import Job, JobRunner, JobStatus
 from app.background import default_job_runner
 favorites_use_case = importlib.import_module("app.use_cases.favorites.add_favorite")
 watch_use_case = importlib.import_module("app.use_cases.watch.update_progress")
+
+
+def make_dummy_factory(repos: object):
+    class _Ctx:
+        async def __aenter__(self) -> object:  # pragma: no cover - stub
+            return repos
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:  # pragma: no cover - stub
+            return False
+
+    def factory() -> _Ctx:
+        return _Ctx()
+
+    return factory
 
 
 @pytest.mark.anyio
@@ -69,40 +84,37 @@ async def test_add_favorite_job_calls_use_case(monkeypatch: pytest.MonkeyPatch) 
     called = {"count": 0}
     runner = JobRunner()
 
-    async def fake_persist(repo_factory, user_id, anime_id, favorite_id, created_at):  # type: ignore[no-untyped-def]
+    async def fake_persist(
+        repo_factory: object,
+        user_id: uuid.UUID,
+        anime_id: uuid.UUID,
+        favorite_id: uuid.UUID,
+        created_at: datetime,
+    ) -> None:
         called["count"] += 1
 
     class DummyAnimeRepo:
-        async def get_by_id(self, _anime_id):  # type: ignore[no-untyped-def]
+        async def get_by_id(self, _anime_id: uuid.UUID) -> object:
             return object()
 
     class DummyFavoriteRepo:
-        async def get(self, _user_id, _anime_id):  # type: ignore[no-untyped-def]
+        async def get(self, _user_id: uuid.UUID, _anime_id: uuid.UUID) -> object | None:
             return None
 
     monkeypatch.setattr(favorites_use_case, "persist_add_favorite", fake_persist)
     monkeypatch.setattr(favorites_use_case, "default_job_runner", runner)
     monkeypatch.setattr("app.background.default_job_runner", runner)
 
-    repos = type(
-        "DummyRepos",
-        (),
-        {"anime": DummyAnimeRepo(), "favorites": DummyFavoriteRepo()},
-    )()
+    class DummyRepos:
+        def __init__(self) -> None:
+            self.anime = DummyAnimeRepo()
+            self.favorites = DummyFavoriteRepo()
 
-    def dummy_factory():  # type: ignore[no-untyped-def]
-        class _Ctx:
-            async def __aenter__(self):  # pragma: no cover - stub
-                return repos
-
-            async def __aexit__(self, exc_type, exc, tb):  # pragma: no cover - stub
-                return False
-
-        return _Ctx()
+    repos = DummyRepos()
 
     await favorites_use_case.add_favorite(
         repos,
-        dummy_factory,
+        make_dummy_factory(repos),
         uuid.uuid4(),
         uuid.uuid4(),
     )
@@ -119,49 +131,40 @@ async def test_watch_progress_job_calls_use_case(monkeypatch: pytest.MonkeyPatch
 
     async def fake_persist(
         repo_factory,
-        user_id,  # type: ignore[no-untyped-def]
-        anime_id,
-        episode,
-        position_seconds,
-        progress_percent,
+        user_id: uuid.UUID,
+        anime_id: uuid.UUID,
+        episode: int,
+        position_seconds: int | None,
+        progress_percent: float | None,
         *,
-        progress_id,
-        created_at,
-        last_watched_at,
+        progress_id: uuid.UUID,
+        created_at: datetime,
+        last_watched_at: datetime,
     ) -> None:
         called["count"] += 1
 
     class DummyAnimeRepo:
-        async def get_by_id(self, _anime_id):  # type: ignore[no-untyped-def]
+        async def get_by_id(self, _anime_id: uuid.UUID) -> object:
             return object()
 
     class DummyWatchRepo:
-        async def get(self, _user_id, _anime_id):  # type: ignore[no-untyped-def]
+        async def get(self, _user_id: uuid.UUID, _anime_id: uuid.UUID) -> object | None:
             return None
 
     monkeypatch.setattr(watch_use_case, "persist_update_progress", fake_persist)
     monkeypatch.setattr(watch_use_case, "default_job_runner", runner)
     monkeypatch.setattr("app.background.default_job_runner", runner)
 
-    repos = type(
-        "DummyRepos",
-        (),
-        {"anime": DummyAnimeRepo(), "watch_progress": DummyWatchRepo()},
-    )()
+    class DummyRepos:
+        def __init__(self) -> None:
+            self.anime = DummyAnimeRepo()
+            self.watch_progress = DummyWatchRepo()
 
-    def dummy_factory():  # type: ignore[no-untyped-def]
-        class _Ctx:
-            async def __aenter__(self):  # pragma: no cover - stub
-                return repos
-
-            async def __aexit__(self, exc_type, exc, tb):  # pragma: no cover - stub
-                return False
-
-        return _Ctx()
+    repos = DummyRepos()
 
     await watch_use_case.update_progress(
         repos,
-        dummy_factory,
+        make_dummy_factory(repos),
         uuid.uuid4(),
         uuid.uuid4(),
         episode=1,
