@@ -2,7 +2,6 @@ from fastapi import APIRouter
 
 from .internal import favorites as internal_favorites
 from .internal import health as internal_health
-from .internal import users as internal_users
 from .internal import watch as internal_watch
 from .proxy import anime as proxy_anime
 from .proxy import episodes as proxy_episodes
@@ -16,7 +15,6 @@ _internal_routers = [
     internal_health.router,
     internal_favorites.router,
     internal_watch.router,
-    internal_users.router,
 ]
 
 _proxy_routers = [

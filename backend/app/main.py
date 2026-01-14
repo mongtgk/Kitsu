@@ -35,7 +35,6 @@ from .api import router as api_router
 from .routers import (
     anime,
     auth,
-    collections,
     episodes,
     favorites,
     releases,
@@ -147,7 +146,6 @@ routers = [
     anime.router,
     releases.router,
     episodes.router,
-    collections.router,
     favorites.router,
     watch.router,
     api_router,
