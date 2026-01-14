@@ -33,7 +33,7 @@ def validate_access_token(token: str) -> Dict[str, Any]:
     # Ensure expiration is still valid if exp is a numeric timestamp
     if isinstance(exp, (int, float)):
         if datetime.fromtimestamp(exp, tz=timezone.utc) <= datetime.now(timezone.utc):
-            raise ExpiredTokenError
+            raise ExpiredTokenError()
 
     subject = payload.get("sub")
     if not isinstance(subject, str):
@@ -44,5 +44,5 @@ def validate_access_token(token: str) -> Dict[str, Any]:
 
 def validate_refresh_token(token: str) -> str:
     if not token or not isinstance(token, str):
-        raise InvalidTokenError
+        raise InvalidTokenError()
     return hash_refresh_token(token)
