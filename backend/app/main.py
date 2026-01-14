@@ -126,8 +126,19 @@ class OptionsPreflightMiddleware(BaseHTTPMiddleware):
                 response.headers["Access-Control-Allow-Origin"] = origin
                 response.headers["Access-Control-Allow-Credentials"] = "true"
                 response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
-                response.headers["Access-Control-Allow-Headers"] = "*"
+                
+                # Handle Access-Control-Allow-Headers:
+                # 1. If client sends Access-Control-Request-Headers, echo it back
+                # 2. Otherwise, use safe allowlist
+                requested_headers = request.headers.get("access-control-request-headers")
+                if requested_headers:
+                    response.headers["Access-Control-Allow-Headers"] = requested_headers
+                else:
+                    response.headers["Access-Control-Allow-Headers"] = "authorization, content-type"
+                
                 response.headers["Access-Control-Max-Age"] = "600"
+                # Add Vary: Origin to indicate response varies by Origin header
+                response.headers["Vary"] = "Origin"
             
             return response
         

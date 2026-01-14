@@ -142,3 +142,76 @@ def test_cors_preflight_auth_logout() -> None:
     
     assert response.status_code == status.HTTP_204_NO_CONTENT
     assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def test_cors_preflight_echoes_request_headers() -> None:
+    """Test that Access-Control-Request-Headers is echoed back in Access-Control-Allow-Headers."""
+    client = TestClient(app)
+    
+    response = client.options(
+        "/auth/login",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization, content-type",
+        },
+    )
+    
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert "access-control-allow-headers" in response.headers
+    # Should echo back the exact header value sent by client
+    assert response.headers["access-control-allow-headers"] == "authorization, content-type"
+
+
+def test_cors_preflight_without_request_headers_uses_allowlist() -> None:
+    """Test that when no Access-Control-Request-Headers is sent, we use a safe allowlist."""
+    client = TestClient(app)
+    
+    response = client.options(
+        "/auth/login",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+            # No Access-Control-Request-Headers
+        },
+    )
+    
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert "access-control-allow-headers" in response.headers
+    # Should use safe allowlist
+    assert response.headers["access-control-allow-headers"] == "authorization, content-type"
+
+
+def test_cors_preflight_includes_vary_origin() -> None:
+    """Test that Vary: Origin header is included in preflight responses for allowed origins."""
+    client = TestClient(app)
+    
+    response = client.options(
+        "/auth/login",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert "vary" in response.headers
+    assert response.headers["vary"] == "Origin"
+
+
+def test_cors_preflight_multi_header_echo() -> None:
+    """Test that multiple headers in Access-Control-Request-Headers are properly echoed."""
+    client = TestClient(app)
+    
+    response = client.options(
+        "/auth/register",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization, content-type, x-custom-header",
+        },
+    )
+    
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert response.headers["access-control-allow-headers"] == "authorization, content-type, x-custom-header"
+    assert response.headers["vary"] == "Origin"
