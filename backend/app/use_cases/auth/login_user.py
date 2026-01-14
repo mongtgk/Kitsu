@@ -1,24 +1,17 @@
 from fastapi import status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ...application.auth_rate_limit import (
+    RATE_LIMIT_MESSAGE,
+    RateLimitExceededError,
+    check_login_rate_limit,
+    record_login_failure,
+    reset_login_limit,
+)
 from ...crud.user import get_user_by_email
 from ...errors import AppError, AuthError, PermissionError
-from ...utils.rate_limit import RATE_LIMIT_MESSAGE, auth_rate_limiter, make_key
 from ...utils.security import verify_password
 from .register_user import AuthTokens, issue_tokens
-
-
-def _rate_limit_key(email: str, client_ip: str | None) -> str:
-    ip_component = client_ip or "unknown-ip"
-    return make_key("login", ip_component, email.lower())
-
-
-def _rate_limit_error() -> AppError:
-    return AppError(
-        RATE_LIMIT_MESSAGE,
-        code="RATE_LIMITED",
-        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-    )
 
 
 async def _authenticate_user(
@@ -33,14 +26,19 @@ async def _authenticate_user(
 async def login_user(
     session: AsyncSession, email: str, password: str, *, client_ip: str | None = None
 ) -> AuthTokens:
-    key = _rate_limit_key(email, client_ip)
-    if auth_rate_limiter.is_limited(key):
-        raise _rate_limit_error()
+    try:
+        key = check_login_rate_limit(email, client_ip)
+    except RateLimitExceededError:
+        raise AppError(
+            RATE_LIMIT_MESSAGE,
+            code="RATE_LIMITED",
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        ) from None
 
     try:
         tokens = await _authenticate_user(session, email, password)
     except (AuthError, PermissionError):
-        auth_rate_limiter.record_failure(key)
+        record_login_failure(key)
         await session.rollback()
         raise
     except AppError:
@@ -49,5 +47,5 @@ async def login_user(
     except Exception:
         await session.rollback()
         raise
-    auth_rate_limiter.reset(key)
+    reset_login_limit(key)
     return tokens

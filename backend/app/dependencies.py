@@ -8,11 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .database import get_session
 from .auth import rbac
 from .models.user import User
-from .utils.security import (
-    TokenExpiredError,
-    TokenInvalidError,
-    decode_access_token,
-)
+from .security.token_inspection import ExpiredTokenError, InvalidTokenError, validate_access_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -33,12 +29,12 @@ async def get_current_user(
 
     token = credentials.credentials
     try:
-        payload = decode_access_token(token)
-    except TokenExpiredError:
+        payload = validate_access_token(token)
+    except ExpiredTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
         ) from None
-    except TokenInvalidError:
+    except InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
         ) from None

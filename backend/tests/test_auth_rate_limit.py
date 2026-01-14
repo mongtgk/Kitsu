@@ -16,7 +16,7 @@ from app.dependencies import get_db  # noqa: E402
 from app.errors import AppError, AuthError, error_payload  # noqa: E402
 from app.routers.auth import router  # noqa: E402
 from app.use_cases.auth.register_user import AuthTokens  # noqa: E402
-from app.utils.rate_limit import (  # noqa: E402
+from app.application.auth_rate_limit import (  # noqa: E402
     AUTH_RATE_LIMIT_MAX_ATTEMPTS,
     auth_rate_limiter,
 )

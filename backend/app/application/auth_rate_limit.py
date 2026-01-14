@@ -3,10 +3,13 @@ import time
 from collections import defaultdict
 from typing import DefaultDict, List
 
-
 AUTH_RATE_LIMIT_MAX_ATTEMPTS = 5
 AUTH_RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_MESSAGE = "Too many attempts, try again later"
+
+
+class RateLimitExceededError(Exception):
+    """Raised when the rate limit is exceeded for a given key."""
 
 
 class SoftRateLimiter:
@@ -16,7 +19,6 @@ class SoftRateLimiter:
         self._attempts: DefaultDict[str, List[float]] = defaultdict(list)
 
     def _prune(self, key: str, now: float) -> List[float]:
-        """Remove expired attempts for the given key in-place."""
         cutoff = now - self.window_seconds
         attempts = [ts for ts in self._attempts.get(key, []) if ts >= cutoff]
         if attempts:
@@ -43,19 +45,49 @@ class SoftRateLimiter:
         self._attempts.clear()
 
 
-def make_key(scope: str, ip: str, identifier: str) -> str:
+def _make_key(scope: str, identifier: str, client_ip: str | None) -> str:
     if not identifier:
         raise ValueError("identifier is required for rate limiting")
     identifier_hash = hashlib.sha256(identifier.encode()).hexdigest()
     identifier_component = identifier_hash[:32]
-    if ip:
-        ip_component = ip
-    else:
-        ip_component = f"unknown-ip-{identifier_hash[:8]}"
+    ip_component = client_ip or f"unknown-ip-{identifier_hash[:8]}"
     return f"{scope}:{ip_component}:{identifier_component}"
+
+
+def _ensure_not_limited(limiter: SoftRateLimiter, key: str) -> None:
+    if limiter.is_limited(key):
+        raise RateLimitExceededError
 
 
 auth_rate_limiter = SoftRateLimiter(
     max_attempts=AUTH_RATE_LIMIT_MAX_ATTEMPTS,
     window_seconds=AUTH_RATE_LIMIT_WINDOW_SECONDS,
 )
+
+
+def check_login_rate_limit(email: str, client_ip: str | None = None) -> str:
+    key = _make_key("login", email.lower(), client_ip)
+    _ensure_not_limited(auth_rate_limiter, key)
+    return key
+
+
+def record_login_failure(key: str) -> None:
+    auth_rate_limiter.record_failure(key)
+
+
+def reset_login_limit(key: str) -> None:
+    auth_rate_limiter.reset(key)
+
+
+def check_refresh_rate_limit(token_identifier: str, client_ip: str | None = None) -> str:
+    key = _make_key("refresh", token_identifier, client_ip)
+    _ensure_not_limited(auth_rate_limiter, key)
+    return key
+
+
+def record_refresh_failure(key: str) -> None:
+    auth_rate_limiter.record_failure(key)
+
+
+def reset_refresh_limit(key: str) -> None:
+    auth_rate_limiter.reset(key)
