@@ -15,7 +15,7 @@ class ExpiredTokenError(Exception):
     """Raised when a token has expired."""
 
 
-def parse_token_payload(token: str) -> Dict[str, Any]:
+def _parse_token_payload(token: str) -> Dict[str, Any]:
     try:
         return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
     except jwt.ExpiredSignatureError as exc:
@@ -25,7 +25,7 @@ def parse_token_payload(token: str) -> Dict[str, Any]:
 
 
 def validate_access_token(token: str) -> Dict[str, Any]:
-    payload = parse_token_payload(token)
+    payload = _parse_token_payload(token)
 
     subject = payload.get("sub")
     if not isinstance(subject, str):
