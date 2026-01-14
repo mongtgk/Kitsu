@@ -15,10 +15,6 @@ class ExpiredTokenError(Exception):
     """Raised when a token has expired."""
 
 
-class TokenTypeError(Exception):
-    """Raised when a token type does not match the expected kind."""
-
-
 def parse_token_payload(token: str) -> Dict[str, Any]:
     try:
         return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
@@ -33,7 +29,7 @@ def validate_access_token(token: str) -> Dict[str, Any]:
 
     exp = payload.get("exp")
     if exp is None:
-        raise InvalidTokenError
+        raise InvalidTokenError()
     # Ensure expiration is still valid if exp is a numeric timestamp
     if isinstance(exp, (int, float)):
         if datetime.fromtimestamp(exp, tz=timezone.utc) <= datetime.now(timezone.utc):
@@ -41,7 +37,7 @@ def validate_access_token(token: str) -> Dict[str, Any]:
 
     subject = payload.get("sub")
     if not isinstance(subject, str):
-        raise InvalidTokenError
+        raise InvalidTokenError()
 
     return payload
 

@@ -16,6 +16,9 @@ from ...security.token_inspection import InvalidTokenError, validate_refresh_tok
 from .register_user import AuthTokens, issue_tokens
 
 
+REFRESH_TOKEN_IDENTIFIER_LENGTH = 16
+
+
 async def _validate_and_issue_tokens(
     session: AsyncSession, token_hash: str
 ) -> AuthTokens:
@@ -37,7 +40,7 @@ async def refresh_session(
     except InvalidTokenError:
         raise AuthError() from None
 
-    token_identifier = token_hash[:16]
+    token_identifier = token_hash[:REFRESH_TOKEN_IDENTIFIER_LENGTH]
     try:
         key = check_refresh_rate_limit(token_identifier, client_ip)
     except RateLimitExceededError:
