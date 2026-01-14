@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -44,7 +43,7 @@ from .routers import (
     watch,
 )
 from .utils.health import check_database_connection
-from .utils.migrations import run_migrations
+from .utils.startup import run_optional_startup_tasks, run_required_startup_checks
 
 AVATAR_DIR = Path(__file__).resolve().parent.parent / "uploads" / "avatars"
 AVATAR_DIR.mkdir(parents=True, exist_ok=True)
@@ -77,27 +76,8 @@ async def lifespan(app: FastAPI):
     if settings.debug:
         logger.warning("DEBUG=true — do not use in production")
 
-    try:
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, run_migrations)
-    except RuntimeError as exc:
-        logger.exception("Application startup aborted due to migration failure")
-        raise
-
-    try:
-        db_status = await check_database_connection(engine, include_metadata=True)
-    except SQLAlchemyError as exc:
-        logger.exception("Database readiness check failed during startup")
-        raise RuntimeError(
-            "Database not ready. Ensure DATABASE_URL is reachable and migrations are applied (e.g. with 'alembic upgrade head')."
-        ) from exc
-    else:
-        logger.info(
-            "Database ready (current_database=%s, current_schema=%s, alembic_revision=%s)",
-            db_status.database or "unknown",
-            db_status.schema or "unknown",
-            db_status.alembic_revision or "unavailable",
-        )
+    await run_required_startup_checks(engine)
+    await run_optional_startup_tasks()
 
     yield
 
