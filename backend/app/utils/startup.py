@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from .health import check_database_connection
 from .migrations import run_migrations
@@ -9,7 +10,7 @@ from .migrations import run_migrations
 logger = logging.getLogger("kitsu.startup")
 
 
-async def run_required_startup_checks(engine) -> None:
+async def run_required_startup_checks(engine: AsyncEngine) -> None:
     try:
         db_status = await check_database_connection(engine, include_metadata=True)
     except SQLAlchemyError as exc:
