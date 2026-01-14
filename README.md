@@ -25,6 +25,7 @@
   Примечание: `ALLOWED_ORIGINS` поддерживает оба формата:
   - CSV: `http://localhost:3000,http://localhost:8080`
   - JSON: `["http://localhost:3000","http://localhost:8080"]`
+  - **ВАЖНО**: НЕ добавляйте завершающий слеш к origins (например: `https://frontend.onrender.com`, а не `https://frontend.onrender.com/`)
 
 ## Docker
 
