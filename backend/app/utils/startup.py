@@ -33,6 +33,6 @@ async def run_optional_startup_tasks() -> None:
         await loop.run_in_executor(None, run_migrations)
     except Exception as exc:  # noqa: BLE001 — optional startup tasks must not crash app
         logger.warning(
-            "Optional startup task failed; continuing startup (migrations).",
+            "Migration task failed during optional startup; continuing application startup.",
             exc_info=exc,
         )
