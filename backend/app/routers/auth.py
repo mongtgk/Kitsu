@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..dependencies import get_db
+from ..application.repositories import RepositoryProvider
+from ..dependencies import get_repositories
 from ..schemas.auth import (
     LogoutRequest,
     RefreshTokenRequest,
@@ -24,9 +24,11 @@ def _client_ip(request: Request) -> str:
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(
-    payload: UserRegister, db: AsyncSession = Depends(get_db)
+    payload: UserRegister, repos: RepositoryProvider = Depends(get_repositories)
 ) -> TokenResponse:
-    tokens = await register_user(db, payload.email, payload.password)
+    tokens = await register_user(
+        repos.users, repos.tokens, payload.email, payload.password
+    )
     return TokenResponse(
         access_token=tokens.access_token, refresh_token=tokens.refresh_token
     )
@@ -34,10 +36,12 @@ async def register(
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
-    payload: UserLogin, request: Request, db: AsyncSession = Depends(get_db)
+    payload: UserLogin,
+    request: Request,
+    repos: RepositoryProvider = Depends(get_repositories),
 ) -> TokenResponse:
     tokens = await login_user(
-        db, payload.email, payload.password, client_ip=_client_ip(request)
+        repos.users, repos.tokens, payload.email, payload.password, client_ip=_client_ip(request)
     )
     return TokenResponse(
         access_token=tokens.access_token, refresh_token=tokens.refresh_token
@@ -46,10 +50,12 @@ async def login(
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(
-    payload: RefreshTokenRequest, request: Request, db: AsyncSession = Depends(get_db)
+    payload: RefreshTokenRequest,
+    request: Request,
+    repos: RepositoryProvider = Depends(get_repositories),
 ) -> TokenResponse:
     tokens = await refresh_session(
-        db, payload.refresh_token, client_ip=_client_ip(request)
+        repos.tokens, payload.refresh_token, client_ip=_client_ip(request)
     )
     return TokenResponse(
         access_token=tokens.access_token, refresh_token=tokens.refresh_token
@@ -58,6 +64,6 @@ async def refresh_token(
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
-    payload: LogoutRequest, db: AsyncSession = Depends(get_db)
+    payload: LogoutRequest, repos: RepositoryProvider = Depends(get_repositories)
 ) -> None:
-    await logout_user(db, payload.refresh_token)
+    await logout_user(repos.tokens, payload.refresh_token)

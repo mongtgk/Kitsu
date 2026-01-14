@@ -64,35 +64,48 @@ async def test_duplicate_enqueue_is_idempotent() -> None:
     await runner.stop()
 
 
-class _DummySession:
-    async def commit(self) -> None:  # pragma: no cover - stub
-        return None
-
-    async def rollback(self) -> None:  # pragma: no cover - stub
-        return None
-
-
 @pytest.mark.anyio
 async def test_add_favorite_job_calls_use_case(monkeypatch: pytest.MonkeyPatch) -> None:
     called = {"count": 0}
     runner = JobRunner()
 
-    async def fake_persist(user_id, anime_id, favorite_id, created_at) -> None:  # type: ignore[no-untyped-def]
+    async def fake_persist(repo_factory, user_id, anime_id, favorite_id, created_at):  # type: ignore[no-untyped-def]
         called["count"] += 1
 
-    async def fake_get_anime_by_id(_session, _anime_id):  # type: ignore[no-untyped-def]
-        return object()
+    class DummyAnimeRepo:
+        async def get_by_id(self, _anime_id):  # type: ignore[no-untyped-def]
+            return object()
 
-    async def fake_get_favorite(_session, _user_id, _anime_id):  # type: ignore[no-untyped-def]
-        return None
+    class DummyFavoriteRepo:
+        async def get(self, _user_id, _anime_id):  # type: ignore[no-untyped-def]
+            return None
 
     monkeypatch.setattr(favorites_use_case, "persist_add_favorite", fake_persist)
-    monkeypatch.setattr(favorites_use_case, "get_anime_by_id", fake_get_anime_by_id)
-    monkeypatch.setattr(favorites_use_case, "get_favorite", fake_get_favorite)
     monkeypatch.setattr(favorites_use_case, "default_job_runner", runner)
     monkeypatch.setattr("app.background.default_job_runner", runner)
 
-    await favorites_use_case.add_favorite(_DummySession(), uuid.uuid4(), uuid.uuid4())
+    repos = type(
+        "DummyRepos",
+        (),
+        {"anime": DummyAnimeRepo(), "favorites": DummyFavoriteRepo()},
+    )()
+
+    def dummy_factory():  # type: ignore[no-untyped-def]
+        class _Ctx:
+            async def __aenter__(self):  # pragma: no cover - stub
+                return repos
+
+            async def __aexit__(self, exc_type, exc, tb):  # pragma: no cover - stub
+                return False
+
+        return _Ctx()
+
+    await favorites_use_case.add_favorite(
+        repos,
+        dummy_factory,
+        uuid.uuid4(),
+        uuid.uuid4(),
+    )
     await asyncio.wait_for(runner.drain(), timeout=1)
     await runner.stop()
 
@@ -105,6 +118,7 @@ async def test_watch_progress_job_calls_use_case(monkeypatch: pytest.MonkeyPatch
     runner = JobRunner()
 
     async def fake_persist(
+        repo_factory,
         user_id,  # type: ignore[no-untyped-def]
         anime_id,
         episode,
@@ -117,20 +131,37 @@ async def test_watch_progress_job_calls_use_case(monkeypatch: pytest.MonkeyPatch
     ) -> None:
         called["count"] += 1
 
-    async def fake_get_anime_by_id(_session, _anime_id):  # type: ignore[no-untyped-def]
-        return object()
+    class DummyAnimeRepo:
+        async def get_by_id(self, _anime_id):  # type: ignore[no-untyped-def]
+            return object()
 
-    async def fake_get_watch_progress(_session, _user_id, _anime_id):  # type: ignore[no-untyped-def]
-        return None
+    class DummyWatchRepo:
+        async def get(self, _user_id, _anime_id):  # type: ignore[no-untyped-def]
+            return None
 
     monkeypatch.setattr(watch_use_case, "persist_update_progress", fake_persist)
-    monkeypatch.setattr(watch_use_case, "get_anime_by_id", fake_get_anime_by_id)
-    monkeypatch.setattr(watch_use_case, "get_watch_progress", fake_get_watch_progress)
     monkeypatch.setattr(watch_use_case, "default_job_runner", runner)
     monkeypatch.setattr("app.background.default_job_runner", runner)
 
+    repos = type(
+        "DummyRepos",
+        (),
+        {"anime": DummyAnimeRepo(), "watch_progress": DummyWatchRepo()},
+    )()
+
+    def dummy_factory():  # type: ignore[no-untyped-def]
+        class _Ctx:
+            async def __aenter__(self):  # pragma: no cover - stub
+                return repos
+
+            async def __aexit__(self, exc_type, exc, tb):  # pragma: no cover - stub
+                return False
+
+        return _Ctx()
+
     await watch_use_case.update_progress(
-        _DummySession(),
+        repos,
+        dummy_factory,
         uuid.uuid4(),
         uuid.uuid4(),
         episode=1,

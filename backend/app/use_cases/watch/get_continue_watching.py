@@ -1,12 +1,22 @@
 import uuid
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from ...crud.watch_progress import list_watch_progress
-from ...models.watch_progress import WatchProgress
+from ...domain.ports.watch_progress import WatchProgressRepository
+from ...schemas.watch import WatchProgressRead
 
 
 async def get_continue_watching(
-    session: AsyncSession, user_id: uuid.UUID, limit: int
-) -> list[WatchProgress]:
-    return await list_watch_progress(session, user_id=user_id, limit=limit)
+    repo: WatchProgressRepository, user_id: uuid.UUID, limit: int
+) -> list[WatchProgressRead]:
+    progress_list = await repo.list_for_user(user_id=user_id, limit=limit)
+    return [
+        WatchProgressRead(
+            id=item.id,
+            anime_id=item.anime_id,
+            episode=item.episode,
+            position_seconds=item.position_seconds,
+            progress_percent=item.progress_percent,
+            created_at=item.created_at,
+            last_watched_at=item.last_watched_at,
+        )
+        for item in progress_list
+    ]

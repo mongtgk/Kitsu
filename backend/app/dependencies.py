@@ -5,6 +5,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .application.repositories import RepositoryFactory, RepositoryProvider
+from .crud.providers import build_repository_provider, get_repository_factory
 from .database import get_session
 from .auth import rbac
 from .models.user import User
@@ -16,6 +18,14 @@ bearer_scheme = HTTPBearer(auto_error=False)
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async for session in get_session():
         yield session
+
+
+async def get_repositories(db: AsyncSession = Depends(get_db)) -> RepositoryProvider:
+    return build_repository_provider(db)
+
+
+def get_repositories_factory() -> RepositoryFactory:
+    return get_repository_factory()
 
 
 async def get_current_user(

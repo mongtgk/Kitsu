@@ -1,16 +1,8 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from ...application.repositories import RepositoryFactory, RepositoryProvider
 from ...background import Job, default_job_runner
-from ...crud.anime import get_anime_by_id
-from ...crud.watch_progress import (
-    create_watch_progress,
-    get_watch_progress,
-    update_watch_progress as crud_update_watch_progress,
-)
-from ...database import AsyncSessionLocal
 from ...errors import NotFoundError, ValidationError
 from ...schemas.watch import WatchProgressRead
 
@@ -29,7 +21,7 @@ def _validate_update_request(
 
 
 async def _apply_watch_progress(
-    session: AsyncSession,
+    repos: RepositoryProvider,
     user_id: uuid.UUID,
     anime_id: uuid.UUID,
     episode: int,
@@ -40,41 +32,24 @@ async def _apply_watch_progress(
     created_at: datetime,
     last_watched_at: datetime,
 ) -> None:
-    try:
-        anime = await get_anime_by_id(session, anime_id)
-        if anime is None:
-            raise NotFoundError("Anime not found")
+    anime = await repos.anime.get_by_id(anime_id)
+    if anime is None:
+        raise NotFoundError("Anime not found")
 
-        progress = await get_watch_progress(session, user_id, anime_id)
-        if progress:
-            await crud_update_watch_progress(
-                session,
-                progress,
-                episode,
-                position_seconds,
-                progress_percent,
-                last_watched_at=last_watched_at,
-            )
-        else:
-            await create_watch_progress(
-                session,
-                user_id,
-                anime_id,
-                episode,
-                position_seconds,
-                progress_percent,
-                progress_id=progress_id,
-                created_at=created_at,
-                last_watched_at=last_watched_at,
-            )
-
-        await session.commit()
-    except Exception:
-        await session.rollback()
-        raise
+    await repos.watch_progress.upsert(
+        user_id,
+        anime_id,
+        episode,
+        position_seconds,
+        progress_percent,
+        progress_id=progress_id,
+        created_at=created_at,
+        last_watched_at=last_watched_at,
+    )
 
 
 async def persist_update_progress(
+    repo_factory: RepositoryFactory,
     user_id: uuid.UUID,
     anime_id: uuid.UUID,
     episode: int,
@@ -85,9 +60,9 @@ async def persist_update_progress(
     created_at: datetime,
     last_watched_at: datetime,
 ) -> None:
-    async with AsyncSessionLocal() as job_session:
+    async with repo_factory() as repos:
         await _apply_watch_progress(
-            job_session,
+            repos,
             user_id,
             anime_id,
             episode,
@@ -100,7 +75,8 @@ async def persist_update_progress(
 
 
 async def update_progress(
-    session: AsyncSession,
+    repos: RepositoryProvider,
+    repo_factory: RepositoryFactory,
     user_id: uuid.UUID,
     anime_id: uuid.UUID,
     episode: int,
@@ -109,11 +85,11 @@ async def update_progress(
 ) -> WatchProgressRead:
     _validate_update_request(episode, position_seconds, progress_percent)
 
-    anime = await get_anime_by_id(session, anime_id)
+    anime = await repos.anime.get_by_id(anime_id)
     if anime is None:
         raise NotFoundError("Anime not found")
 
-    existing_progress = await get_watch_progress(session, user_id, anime_id)
+    existing_progress = await repos.watch_progress.get(user_id, anime_id)
     now = datetime.now(timezone.utc)
     progress_id = existing_progress.id if existing_progress else uuid.uuid4()
     created_at = existing_progress.created_at if existing_progress else now
@@ -130,6 +106,7 @@ async def update_progress(
 
     async def handler() -> None:
         await persist_update_progress(
+            repo_factory,
             user_id,
             anime_id,
             episode,

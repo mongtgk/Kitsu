@@ -16,7 +16,13 @@ os.environ.setdefault(
 
 from app.auth.enforcement_matrix import ENFORCEMENT_MATRIX
 from app.auth.helpers import require_any_permission, require_permission
-from app.dependencies import get_current_role, get_current_user, get_db
+from app.dependencies import (
+    get_current_role,
+    get_current_user,
+    get_db,
+    get_repositories,
+    get_repositories_factory,
+)
 from app.errors import PermissionError
 from app.routers import favorites, watch
 
@@ -65,6 +71,17 @@ class DummySession:
         return None
 
 
+class DummyRepoFactory:
+    def __init__(self, repos: object) -> None:
+        self._repos = repos
+
+    async def __aenter__(self) -> object:  # pragma: no cover - stub
+        return self._repos
+
+    async def __aexit__(self, exc_type, exc, tb) -> bool:  # pragma: no cover - stub
+        return False
+
+
 class DummyUser:
     def __init__(self) -> None:
         self.id = uuid.uuid4()
@@ -100,18 +117,25 @@ class DummyProgress:
 
 
 def make_client(role: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    dummy_repos = type(
+        "DummyRepos",
+        (),
+        {"favorites": object(), "anime": object(), "watch_progress": object()},
+    )()
+
     async def fake_add_favorite_use_case(
-        _db: DummySession, user_id: uuid.UUID, anime_id: uuid.UUID
+        _repos, _repo_factory, user_id: uuid.UUID, anime_id: uuid.UUID
     ) -> DummyFavorite:
         return DummyFavorite(anime_id)
 
     async def fake_remove_favorite_use_case(
-        _db: DummySession, user_id: uuid.UUID, anime_id: uuid.UUID
+        _repos, _repo_factory, user_id: uuid.UUID, anime_id: uuid.UUID
     ) -> None:
         pass
 
     async def fake_update_progress(
-        _db: DummySession,
+        _repos,
+        _repo_factory,
         user_id: uuid.UUID,
         anime_id: uuid.UUID,
         episode: int,
@@ -145,6 +169,10 @@ def make_client(role: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     app.dependency_overrides[get_current_role] = override_role
     app.dependency_overrides[get_current_user] = override_user
     app.dependency_overrides[get_db] = override_db
+    app.dependency_overrides[get_repositories] = lambda: dummy_repos
+    app.dependency_overrides[get_repositories_factory] = (  # type: ignore[return-value]
+        lambda: (lambda: DummyRepoFactory(dummy_repos))
+    )
 
     return TestClient(app)
 

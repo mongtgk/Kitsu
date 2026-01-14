@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..application.repositories import RepositoryFactory, RepositoryProvider
 from ..auth.enforcement_matrix import require_enforced_permission
-from ..dependencies import get_current_user, get_db
+from ..dependencies import get_current_user, get_repositories, get_repositories_factory
 from ..models.user import User
 from ..schemas.watch import WatchProgressRead, WatchProgressUpdate
 from ..use_cases.watch import get_continue_watching, update_progress
@@ -13,12 +13,14 @@ router = APIRouter(prefix="/watch", tags=["watch"])
 @router.post("/progress", response_model=WatchProgressRead)
 async def upsert_progress(
     payload: WatchProgressUpdate,
-    db: AsyncSession = Depends(get_db),
+    repos: RepositoryProvider = Depends(get_repositories),
+    repo_factory: RepositoryFactory = Depends(get_repositories_factory),
     current_user: User = Depends(get_current_user),
     _=Depends(require_enforced_permission("POST", "/watch/progress")),
 ) -> WatchProgressRead:
     return await update_progress(
-        db,
+        repos,
+        repo_factory,
         user_id=current_user.id,
         anime_id=payload.anime_id,
         episode=payload.episode,
@@ -30,7 +32,9 @@ async def upsert_progress(
 @router.get("/continue", response_model=list[WatchProgressRead])
 async def continue_watching(
     limit: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
+    repos: RepositoryProvider = Depends(get_repositories),
     current_user: User = Depends(get_current_user),
 ) -> list[WatchProgressRead]:
-    return await get_continue_watching(db, user_id=current_user.id, limit=limit)
+    return await get_continue_watching(
+        repos.watch_progress, user_id=current_user.id, limit=limit
+    )
