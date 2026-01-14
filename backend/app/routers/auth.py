@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..dependencies import get_db
-from ..errors import AppError, AuthError, PermissionError
 from ..schemas.auth import (
     LogoutRequest,
     RefreshTokenRequest,
@@ -14,13 +13,8 @@ from ..use_cases.auth.login_user import login_user
 from ..use_cases.auth.logout_user import logout_user
 from ..use_cases.auth.refresh_session import refresh_session
 from ..use_cases.auth.register_user import register_user
-from ..utils.rate_limit import auth_rate_limiter, make_key
-from ..utils.security import hash_refresh_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-REFRESH_TOKEN_IDENTIFIER_LENGTH = 16
 
 
 def _client_ip(request: Request) -> str:
@@ -42,21 +36,9 @@ async def register(
 async def login(
     payload: UserLogin, request: Request, db: AsyncSession = Depends(get_db)
 ) -> TokenResponse:
-    client_ip = _client_ip(request)
-    key = make_key("login", client_ip, payload.email.lower())
-    if auth_rate_limiter.is_limited(key):
-        raise AppError(
-            "Too many attempts, try again later",
-            code="RATE_LIMITED",
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-        )
-
-    try:
-        tokens = await login_user(db, payload.email, payload.password)
-    except (AuthError, PermissionError):
-        auth_rate_limiter.record_failure(key)
-        raise
-    auth_rate_limiter.reset(key)
+    tokens = await login_user(
+        db, payload.email, payload.password, client_ip=_client_ip(request)
+    )
     return TokenResponse(
         access_token=tokens.access_token, refresh_token=tokens.refresh_token
     )
@@ -66,24 +48,9 @@ async def login(
 async def refresh_token(
     payload: RefreshTokenRequest, request: Request, db: AsyncSession = Depends(get_db)
 ) -> TokenResponse:
-    client_ip = _client_ip(request)
-    token_identifier = hash_refresh_token(payload.refresh_token)[
-        :REFRESH_TOKEN_IDENTIFIER_LENGTH
-    ]
-    key = make_key("refresh", client_ip, token_identifier)
-    if auth_rate_limiter.is_limited(key):
-        raise AppError(
-            "Too many attempts, try again later",
-            code="RATE_LIMITED",
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-        )
-
-    try:
-        tokens = await refresh_session(db, payload.refresh_token)
-    except (AuthError, PermissionError):
-        auth_rate_limiter.record_failure(key)
-        raise
-    auth_rate_limiter.reset(key)
+    tokens = await refresh_session(
+        db, payload.refresh_token, client_ip=_client_ip(request)
+    )
     return TokenResponse(
         access_token=tokens.access_token, refresh_token=tokens.refresh_token
     )
